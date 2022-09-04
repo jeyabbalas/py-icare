@@ -86,10 +86,10 @@ def compute_absolute_risk(
         )
 
         if handle_snps:
-            # , pop_weights, beta_est, z_new
-            # pop.dist.mat <- sim_snps(snps.betas, snps.freqs, cbind( rep( fh.pop, n.imp)) )
             pop_dist_mat = utils.sim_snps(
-                model_snp_info["snp_betas"].values, model_snp_info["snp_freq"].values, fh_pop
+                model_snp_info["snp_betas"].values,
+                model_snp_info["snp_freq"].values,
+                np.tile(fh_pop, n_imp)
             )
 
 
