@@ -4,32 +4,32 @@
   },
   "menarche_dec": {
     "type": "discrete",
-    "levels": ["1", "2", "3", "5", "8", "9", "10"]
+    "levels": [1, 2, 3, 5, 8, 9, 10]
   },
   "parity": {
     "type": "discrete",
-    "levels": ["0", "1", "2", "3", "4"],
+    "levels": [0, 1, 2, 3, 4],
     "ref": "0"
   },
   "birth_dec": {
     "type": "discrete",
-    "levels": ["1", "2", "3", "4", "7", "8", "9", "10", "11"]
+    "levels": [1, 2, 3, 4, 7, 8, 9, 10, 11]
   },
   "agemeno_dec": {
     "type": "discrete",
-    "levels": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+    "levels": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
   },
   "height_dec": {
     "type": "discrete",
-    "levels": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+    "levels": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
   },
   "bmi_dec": {
     "type": "discrete",
-    "levels": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+    "levels": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
   },
   "rd_menohrt": {
     "type": "discrete",
-    "levels": ["0", "1", "2"]
+    "levels": [0, 1, 2]
   },
   "rd2_everhrt_e": {
     "type": "continuous"
@@ -42,10 +42,10 @@
   },
   "alcoholdweek_dec": {
     "type": "discrete",
-    "levels": ["1", "4", "5", "6", "7", "8", "9", "10"]
+    "levels": [1, 4, 5, 6, 7, 8, 9, 10]
   },
   "ever_smoke": {
     "type": "discrete",
-    "levels": ["0", "1"]
+    "levels": [0, 1]
   }
 }

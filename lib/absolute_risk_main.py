@@ -1,3 +1,5 @@
+import numpy as np
+
 from lib import check_errors, utils
 
 
@@ -12,7 +14,7 @@ def compute_absolute_risk(
         model_reference_dataset=None,
         model_ref_dataset_weights=None,
         model_competing_incidence_rates=None,
-        model_bin_fh_name=None,
+        model_family_history_binary_variable_name=None,
         n_imp=5,
         apply_covariates_profile=None,
         apply_snp_profile=None,
@@ -37,7 +39,7 @@ def compute_absolute_risk(
     :param model_reference_dataset:
     :param model_ref_dataset_weights:
     :param model_competing_incidence_rates:
-    :param model_bin_fh_name:
+    :param model_family_history_binary_variable_name:
     :param n_imp: the number of imputations (int) for handling missing SNPs.
     :param apply_covariates_profile: a dataframe containing covairate profiles for which,
     :param apply_snp_profile: a data frame with observed SNP data of allele dosages (coded 0, 1, 2, or “”). Missing
@@ -67,10 +69,12 @@ def compute_absolute_risk(
 
     if handle_snps:
         check_errors.check_snp_info(model_snp_info)
-
-        snp_names
-        snp_betas
-        snp_freqs
+        model_snp_info["snp_betas"] = np.log(model_snp_info["snp_odds_ratio"])
+        attenuate_fh, fh_pop, apply_snp_profile = utils.process_snp_info(
+            model_includes_covariates, apply_snp_profile,
+            model_family_history_binary_variable_name, apply_covariates_profile,
+            model_reference_dataset, model_snp_info
+        )
 
 
 def compute_absolute_risk_split_interval(
