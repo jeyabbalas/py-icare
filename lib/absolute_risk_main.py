@@ -25,7 +25,7 @@ def compute_absolute_risk(
     This function is used to build absolute risk models and apply them to estimate absolute risks.
 
     :param apply_age_start: ages for the start of the interval over which to compute the absolute risk. If a single int
-        is provided, all instances in the `apply_covariates_profile` and apply_snp_profile are assigned the same start age
+        is provided, all instances in the 'apply_covariates_profile' and apply_snp_profile are assigned the same start age
         for the interval. If a different start age needs to be assigned for each instance in apply_covariates_profile
         and apply_snp_profile, provide a list of ints of the same length as the number of rows in these profiles.
     :param apply_age_interval_length:
@@ -60,9 +60,9 @@ def compute_absolute_risk(
     )
 
     handle_snps = model_snp_info is not None
+    fh_pop = None
 
     if model_includes_covariates:
-        # TODO
         apply_age_start, apply_age_interval_length = check_errors.check_age_lengths(
             apply_age_start, apply_age_interval_length, apply_covariates_profile, "apply_covariates_profile"
         )
@@ -75,6 +75,22 @@ def compute_absolute_risk(
             model_family_history_binary_variable_name, apply_covariates_profile,
             model_reference_dataset, model_snp_info
         )
+
+    if model_includes_covariates:
+        if handle_snps:
+            covariate_stack5 = None
+    else:
+        apply_age_start, apply_age_interval_length = check_errors.check_age_lengths(
+            apply_age_start, apply_age_interval_length,
+            apply_snp_profile, "apply_snp_profile"
+        )
+
+        if handle_snps:
+            # , pop_weights, beta_est, z_new
+            # pop.dist.mat <- sim_snps(snps.betas, snps.freqs, cbind( rep( fh.pop, n.imp)) )
+            pop_dist_mat = utils.sim_snps(
+                model_snp_info["snp_betas"].values, model_snp_info["snp_freq"].values, fh_pop
+            )
 
 
 def compute_absolute_risk_split_interval(

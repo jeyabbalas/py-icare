@@ -1,16 +1,21 @@
-# This is a sample Python script.
+import pandas as pd
 
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
+from lib import absolute_risk_main
+
+def run_snp_only_test():
+    model_snp_info = pd.read_csv("./data/bc_72_snps.csv")
+    model_disease_incidence_rates = pd.read_csv("./data/model_disease_incidence_rates.csv", header=None)
+    model_competing_incidence_rates = pd.read_csv("./data/model_competing_incidence_rates.csv", header=None)
+
+    absolute_risk_main.compute_absolute_risk(
+        model_snp_info=model_snp_info,
+        model_disease_incidence_rates=model_disease_incidence_rates,
+        model_competing_incidence_rates=model_competing_incidence_rates,
+        apply_age_start=50,
+        apply_age_interval_length=30,
+        return_refs_risk=True
+    )
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
-
-
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    run_snp_only_test()

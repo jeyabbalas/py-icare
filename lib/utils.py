@@ -15,19 +15,19 @@ def decide_if_snp_only(apply_covariates_profile, model_formula, model_log_relati
 
         if model_snp_info is None:
             raise ValueError("ERROR: You appear to be fitting a SNP-only model, and thus must provide relevant data "
-                             "to the `model_snp_info` argument.")
+                             "to the 'model_snp_info' argument.")
 
         if apply_snp_profile is None:
             if isinstance(apply_age_start, int) and isinstance(apply_age_interval_length, int):
-                apply_snp_profile = pd.DataFrame(columns=model_snp_info["snp_info"],
+                apply_snp_profile = pd.DataFrame(columns=model_snp_info["snp_name"],
                                                  index=range(10_000))
-                print("\nNote: You did not provide an `apply_snp_profile`.  "
+                print("\nNote: You did not provide an 'apply_snp_profile'.  "
                       "iCARE will impute SNPs for 10000 individuals.\n")
-                print("If you require more, please provide an input to `apply_snp_profile`.\n")
+                print("If you require more, please provide an input to 'apply_snp_profile'.\n")
             else:
                 apply_snp_profile = pd.DataFrame(columns=model_snp_info["snp_info"],
                                                  index=range(len(apply_age_start)))
-                print(f"\nNote: You did not provide an `apply_snp_profile`.  "
+                print(f"\nNote: You did not provide an 'apply_snp_profile'.  "
                       f"iCARE will impute SNPs for {len(apply_age_start)} individuals, "
                       f"to match the specified number of age intervals.\n")
     else:
@@ -37,8 +37,8 @@ def decide_if_snp_only(apply_covariates_profile, model_formula, model_log_relati
                 model_log_relative_risk is None or \
                 model_reference_dataset is None or \
                 model_covariates_info is None:
-            raise ValueError("ERROR: Either all or none of the arguments— `apply_covariates_profile`, `model_formula`, "
-                             "`model_log_relative_risk`, `model_reference_dataset`, and `model_covariates_info`— "
+            raise ValueError("ERROR: Either all or none of the arguments— 'apply_covariates_profile', 'model_formula', "
+                             "'model_log_relative_risk', 'model_reference_dataset', and 'model_covariates_info'— "
                              "should be None. If all of them are None, it implies a SNP-only model.")
 
         model_includes_covariates = True
@@ -54,11 +54,11 @@ def process_snp_info(model_includes_covariates, apply_snp_profile, model_family_
                 data=np.full((apply_covariates_profile.shape[0], model_snp_info.shape[0]), np.nan),
                 columns=model_snp_info["snp_name"]
             )
-            print("Note: You included `model_snp_info`, but did not provide an `apply_snp_profile`. "
+            print("Note: You included 'model_snp_info', but did not provide an 'apply_snp_profile'. "
                   "So, values for all SNPs will be imputed.")
 
         if apply_snp_profile.shape[0] != apply_covariates_profile.shape[0]:
-            raise ValueError("ERROR: `apply_covariates_profile` and `apply_snp_profile` must have the same "
+            raise ValueError("ERROR: 'apply_covariates_profile' and 'apply_snp_profile' must have the same "
                              "number of rows.")
 
         if model_family_history_binary_variable_name is not None:
@@ -72,12 +72,12 @@ def process_snp_info(model_includes_covariates, apply_snp_profile, model_family_
                 fh_cov = apply_covariates_profile[model_family_history_binary_variable_name].values
 
                 if not ((fh_pop == 0) | (fh_pop == 1) | (np.isnan(fh_pop))).all():
-                    raise ValueError("ERROR: The family history must be binary when using `model_snp_info` "
-                                     "functionality. Check input for `model_reference_dataset`.")
+                    raise ValueError("ERROR: The family history must be binary when using 'model_snp_info' "
+                                     "functionality. Check input for 'model_reference_dataset'.")
 
                 if not ((fh_cov == 0) | (fh_cov == 1) | (np.isnan(fh_cov))).all():
-                    raise ValueError("ERROR: The family history must be binary when using `model_snp_info` "
-                                     "functionality. Check input for `apply_covariates_profile`.")
+                    raise ValueError("ERROR: The family history must be binary when using 'model_snp_info' "
+                                     "functionality. Check input for 'apply_covariates_profile'.")
 
         else:
             attenuate_fh = False
@@ -90,3 +90,7 @@ def process_snp_info(model_includes_covariates, apply_snp_profile, model_family_
         print("Note: As specified, the model does not adjust SNP imputations for family history.")
 
     return attenuate_fh, fh_pop, apply_snp_profile
+
+
+def sim_snps(snp_betas, snp_freqs, fh_status):
+    return None
