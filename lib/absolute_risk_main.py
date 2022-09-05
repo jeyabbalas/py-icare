@@ -61,6 +61,9 @@ def compute_absolute_risk(
 
     handle_snps = model_snp_info is not None
     fh_pop = None
+    pop_dist_mat = None
+    pop_weights = None
+    beta_est = None
 
     if model_includes_covariates:
         apply_age_start, apply_age_interval_length = check_errors.check_age_lengths(
@@ -93,12 +96,20 @@ def compute_absolute_risk(
             )
             pop_weights = np.full((pop_dist_mat.shape[0], ), 1.0/pop_dist_mat.shape[0])
             beta_est = model_snp_info["snp_betas"].values
-            z_new = apply_snp_profile.values.transpose()
+            z_new = apply_snp_profile.values.T
 
     lambda_vals, model_competing_incidence_rates = check_errors.check_rates(
         model_competing_incidence_rates, model_disease_incidence_rates,
         apply_age_start, apply_age_interval_length
     )
+    approx_expectation_rr = np.average(np.exp(np.matmul(pop_dist_mat, beta_est)), weights=pop_weights)
+    lambda_0, precise_expectation_rr = utils.precise_lambda0(
+        lambda_vals, approx_expectation_rr, beta_est, pop_dist_mat, pop_weights
+    )
+    pop_dist_mat = pop_dist_mat.T
+
+    # compute A_j for non-NAs
+
 
 
 def compute_absolute_risk_split_interval(

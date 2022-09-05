@@ -91,7 +91,7 @@ def check_rates(model_competing_incidence_rates, model_disease_incidence_rates, 
 
     if model_competing_incidence_rates is None:
         model_competing_incidence_rates = pd.DataFrame(data=np.vstack((lambda_vals["age"],
-                                                                       np.zeros(lambda_vals.shape[0]))).transpose(),
+                                                                       np.zeros(lambda_vals.shape[0]))).T,
                                                        columns=["age", "rate"])
 
     model_competing_incidence_rates = check_flexible_rate_inputs(model_competing_incidence_rates,

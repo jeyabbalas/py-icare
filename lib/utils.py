@@ -97,20 +97,20 @@ def process_snp_info(model_includes_covariates, apply_snp_profile, model_family_
 def sim_snps(snp_betas, snp_freqs, fh_status):
     snps = np.full((fh_status.shape[0], snp_freqs.shape[0]), np.nan)
     prob012_fh_no = np.column_stack(
-        ((1.0-snp_freqs)**2,
-         2*snp_freqs*(1-snp_freqs),
-         snp_freqs**2)
+        ((1.0 - snp_freqs) ** 2,
+         2 * snp_freqs * (1 - snp_freqs),
+         snp_freqs ** 2)
     )
     beta_mat = np.repeat(snp_betas, 3).reshape(-1, 3)
-    top = np.exp(beta_mat*(np.tile(np.array([0., 1., 2.]), snp_betas.shape[0]).reshape(-1, 3)/2.0)) * prob012_fh_no
+    top = np.exp(beta_mat * (np.tile(np.array([0., 1., 2.]), snp_betas.shape[0]).reshape(-1, 3) / 2.0)) * prob012_fh_no
     bottom = np.repeat(np.sum(top, axis=1), 3).reshape(-1, 3)
-    prob012_fh_yes = top/bottom
+    prob012_fh_yes = top / bottom
 
     fh_no = np.where(fh_status == 0)
     fh_yes = np.where(fh_status == 1)
 
-    vals = np.random.default_rng()\
-        .uniform(size=fh_status.shape[0]*snp_betas.shape[0])\
+    vals = np.random.default_rng() \
+        .uniform(size=fh_status.shape[0] * snp_betas.shape[0]) \
         .reshape(fh_status.shape[0], snp_betas.shape[0])
 
     if fh_no[0].shape[0]:
@@ -122,3 +122,36 @@ def sim_snps(snp_betas, snp_freqs, fh_status):
                        np.array(vals[fh_yes] > np.sum(prob012_fh_yes[:, :2], axis=1), dtype=int)
 
     return snps
+
+
+def survival_given_x(lambda_0, beta_est, pop_dist_mat):
+    # produces a matrix with Nobs x Ntimes
+    # cumulative up to but not including current time
+    mult = -np.exp(np.matmul(pop_dist_mat, beta_est))
+    cum_lam = np.cumsum(np.append(np.array([0.]), lambda_0["rate"].values))[:lambda_0["rate"].shape[0]]
+    return np.exp(np.matmul(mult.reshape(-1, 1), cum_lam.reshape(1, -1)))
+
+
+def precise_lambda0(lambda_vals, approx_expectation_rr, beta_est, pop_dist_mat, pop_weights):
+    lambda_0 = lambda_vals.copy(deep=True)
+    precise_expectation_rr0 = approx_expectation_rr - 1.0
+    precise_expectation_rr1 = approx_expectation_rr
+
+    i = 0
+    while np.sum(np.abs(precise_expectation_rr1 - precise_expectation_rr0)) > 0.001:
+        i = i + 1
+        precise_expectation_rr0 = precise_expectation_rr1
+        # new expectation rr implies lambda0
+        lambda_0["rate"] = lambda_vals["rate"].values / precise_expectation_rr0
+        # that lambda0 implies new expectation rr
+        this_survival = survival_given_x(lambda_0, beta_est, pop_dist_mat) * \
+            np.repeat(pop_weights, lambda_0.shape[0]).reshape(pop_weights.shape[0], lambda_0.shape[0])
+        deno = 1. / np.sum(this_survival, axis=0)
+        prob_x_given_t = this_survival * deno
+
+        # to compute next iteration
+        precise_expectation_rr1 = np.sum((prob_x_given_t.T * np.exp(np.matmul(pop_dist_mat, beta_est))).T, axis=0)
+
+    lambda_0["rate"] = lambda_vals["rate"] / precise_expectation_rr1
+
+    return lambda_0, precise_expectation_rr1
