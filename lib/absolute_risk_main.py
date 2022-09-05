@@ -91,6 +91,14 @@ def compute_absolute_risk(
                 model_snp_info["snp_freq"].values,
                 np.tile(fh_pop, n_imp)
             )
+            pop_weights = np.full((pop_dist_mat.shape[0], ), 1.0/pop_dist_mat.shape[0])
+            beta_est = model_snp_info["snp_betas"].values
+            z_new = apply_snp_profile.values.transpose()
+
+    lambda_vals, model_competing_incidence_rates = check_errors.check_rates(
+        model_competing_incidence_rates, model_disease_incidence_rates,
+        apply_age_start, apply_age_interval_length
+    )
 
 
 def compute_absolute_risk_split_interval(
