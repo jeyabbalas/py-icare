@@ -20,7 +20,7 @@ def package_results(final_risks, z_new, model_includes_covariates, handle_snps, 
                 axis=1
             )
             columns = ["interval_start", "interval_end", "risk_estimate", *snp_names, *apply_covariates_profile.columns]
-            result["details"] = pd.DataFrame(data=data, columns=columns).to_json()
+            result["details"] = pd.DataFrame(data=data, columns=columns).to_json(orient="records")
             beta_names = [*snp_names, *model_log_relative_risk["covariate_name"]]
         else:
             data = np.concatenate(
@@ -31,7 +31,7 @@ def package_results(final_risks, z_new, model_includes_covariates, handle_snps, 
                 axis=1
             )
             columns = ["interval_start", "interval_end", "risk_estimate", *apply_covariates_profile.columns]
-            result["details"] = pd.DataFrame(data=data, columns=columns).to_json()
+            result["details"] = pd.DataFrame(data=data, columns=columns).to_json(orient="records")
             beta_names = [*model_log_relative_risk["covariate_name"]]
     else:
         data = np.concatenate(
@@ -42,13 +42,13 @@ def package_results(final_risks, z_new, model_includes_covariates, handle_snps, 
             axis=1
         )
         columns = ["interval_start", "interval_end", "risk_estimate", *snp_names]
-        result["details"] = pd.DataFrame(data=data, columns=columns).to_json()
+        result["details"] = pd.DataFrame(data=data, columns=columns).to_json(orient="records")
         beta_names = [*snp_names]
 
     result["beta_used"] = pd.DataFrame(
         data=np.concatenate([np.array(beta_names).reshape(-1, 1), beta_est.reshape(-1, 1)], axis=1),
         columns=["variable_name", "log_OR_used"]
-    ).to_json()
+    ).to_json(orient="records")
 
     if return_lp:
         result["lps"] = lps.tolist()

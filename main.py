@@ -2,6 +2,7 @@ import pandas as pd
 
 from lib import absolute_risk_main
 
+
 def run_snp_only_test():
     model_snp_info = pd.read_csv("./data/bc_72_snps.csv")
     model_disease_incidence_rates = pd.read_csv("./data/model_disease_incidence_rates.csv")

@@ -233,7 +233,7 @@ def get_refs_risk(ref_pop, apply_age_start, apply_age_interval_length, lambda_0,
     refs_lps = np.matmul(ref_pop.T, beta_est)
 
     if handle_snps:
-        refs_risk = np.sum(refs_risk.reshape((-1, n_imp), order="F"), axis=1)
-        refs_lps = np.sum(refs_lps.reshape((-1, n_imp), order="F"), axis=1)
+        refs_risk = np.mean(refs_risk.reshape((-1, n_imp), order="F"), axis=1)
+        refs_lps = np.mean(refs_lps.reshape((-1, n_imp), order="F"), axis=1)
 
     return refs_risk, refs_lps

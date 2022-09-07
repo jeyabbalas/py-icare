@@ -137,7 +137,6 @@ def compute_absolute_risk(
 
     these = np.where(np.sum(np.array(~np.isnan(z_new), dtype=int), axis=0) == 0)[0]
     if these.shape[0] > 0:
-        # TODO: ref_risks is fishy
         ref_risks, _ = utils.get_refs_risk(
             ref_pop, apply_age_start, apply_age_interval_length, lambda_0, beta_est, model_competing_incidence_rates,
             handle_snps, n_imp
@@ -150,11 +149,19 @@ def compute_absolute_risk(
     toc = time.time()
     print(f"Time elapsed: {toc - tic:.5} seconds.")
 
-    results = misc.package_results(
+    result = misc.package_results(
         final_risks, z_new, model_includes_covariates, handle_snps, apply_age_start, apply_age_interval_length,
         apply_covariates_profile, model_log_relative_risk, beta_est, apply_snp_profile,
         model_snp_info["snp_name"].values, return_lp, lps
     )
+
+    if return_refs_risk:
+        result["reference_risk"], _ = utils.get_refs_risk(
+            ref_pop, apply_age_start, apply_age_interval_length, lambda_0, beta_est, model_competing_incidence_rates,
+            handle_snps, n_imp
+        )
+
+    return result
 
 
 def compute_absolute_risk_split_interval(
