@@ -2,7 +2,11 @@ import time
 
 import numpy as np
 
-from lib import check_errors, misc, utils
+from icare import check_errors, misc, utils
+
+
+def hello_world(name="world"):
+    return f"Hello, {name}!"
 
 
 def compute_absolute_risk(

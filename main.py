@@ -1,6 +1,6 @@
 import pandas as pd
 
-from lib import absolute_risk_main
+from icare import absolute_risk_main
 
 
 def run_snp_only_test():
