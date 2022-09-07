@@ -2,7 +2,7 @@ import time
 
 import numpy as np
 
-from lib import check_errors, utils
+from lib import check_errors, misc, utils
 
 
 def compute_absolute_risk(
@@ -131,19 +131,18 @@ def compute_absolute_risk(
 
     tic = time.time()
     final_risks, lps = utils.handle_missing_data(
-        apply_age_start, apply_age_interval_length,
-        z_new, miss, present, n_cuts, final_risks,
-        ref_pop, pop_weights, lambda_0, beta_est,
-        model_competing_incidence_rates, lps
+        apply_age_start, apply_age_interval_length, z_new, miss, present, n_cuts, final_risks,
+        ref_pop, pop_weights, lambda_0, beta_est, model_competing_incidence_rates, lps
     )
 
     these = np.where(np.sum(np.array(~np.isnan(z_new), dtype=int), axis=0) == 0)[0]
     if these.shape[0] > 0:
+        # TODO: ref_risks is fishy
         ref_risks, _ = utils.get_refs_risk(
-            ref_pop, apply_age_start, apply_age_interval_length, lambda_0, beta_est,model_competing_incidence_rates,
+            ref_pop, apply_age_start, apply_age_interval_length, lambda_0, beta_est, model_competing_incidence_rates,
             handle_snps, n_imp
         )
-        ref_risks[these] = np.average(
+        final_risks[these] = np.average(
             ref_risks[~np.isnan(ref_risks)],
             weights=pop_weights[:ref_risks.shape[0]][~np.isnan(ref_risks)]
         )
@@ -151,9 +150,11 @@ def compute_absolute_risk(
     toc = time.time()
     print(f"Time elapsed: {toc - tic:.5} seconds.")
 
-
-
-
+    results = misc.package_results(
+        final_risks, z_new, model_includes_covariates, handle_snps, apply_age_start, apply_age_interval_length,
+        apply_covariates_profile, model_log_relative_risk, beta_est, apply_snp_profile,
+        model_snp_info["snp_name"].values, return_lp, lps
+    )
 
 
 def compute_absolute_risk_split_interval(
