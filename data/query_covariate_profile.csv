@@ -1,4 +1,4 @@
 id,family_history,age_at_menarche,parity,age_at_first_child_birth,age_at_menopause,height,bmi,menopause_hrt,menopause_hrt_e,menopause_hrt_c,current_hrt,alcohol_consumption,smoking_status
-Q-01,0,13-14,nulliparous,19-22,40-45,1.63-1.65,>=34.6,1,0,0,0,none,ever
-Q-02,0,>=15,nulliparous,19-22,<=40,1.63-1.65,24.2-25.3,1,0,0,0,0.8-1.5,never
-Q-03,0,<=11,nulliparous,<=19,51-52,<=1.55,>=34.6,1,0,0,0,none,ever
+Q-01,0,13-14,0,19-22,40-45,1.63-1.65,>=34.6,1,0,0,0,none,ever
+Q-02,0,>=15,0,19-22,<=40,1.63-1.65,24.2-25.3,1,0,0,0,0.8-1.5,never
+Q-03,0,<=11,0,<=19,51-52,<=1.55,>=34.6,1,0,0,0,none,ever
