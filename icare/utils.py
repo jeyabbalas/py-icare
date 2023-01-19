@@ -1,51 +1,9 @@
+import json
+import pathlib
+from typing import Union, List
+
 import numpy as np
 import pandas as pd
-
-
-def decide_if_snp_only(apply_covariates_profile, model_formula, model_log_relative_risk, model_reference_dataset,
-                       model_covariates_info, model_snp_info, apply_snp_profile, apply_age_start,
-                       apply_age_interval_length):
-    if apply_covariates_profile is None and \
-            model_formula is None and \
-            model_log_relative_risk is None and \
-            model_reference_dataset is None and \
-            model_covariates_info is None:
-        # SNP-only model, no covariates in model
-        model_includes_covariates = False
-
-        if model_snp_info is None:
-            raise ValueError("ERROR: You appear to be fitting a SNP-only model, and thus must provide relevant data "
-                             "to the 'model_snp_info' argument.")
-
-        if apply_snp_profile is None:
-            if isinstance(apply_age_start, int) and isinstance(apply_age_interval_length, int):
-                n_instances_imputed = 10_000
-                apply_snp_profile = pd.DataFrame(
-                    data=np.full((n_instances_imputed, model_snp_info.shape[0]), np.nan)
-                )
-                print(f"\nNote: You did not provide an 'apply_snp_profile'. "
-                      f"iCARE will impute SNPs for {n_instances_imputed:,} individuals.")
-                print("If you require more, please provide an input to 'apply_snp_profile'.\n")
-            else:
-                apply_snp_profile = pd.DataFrame(columns=model_snp_info["snp_info"],
-                                                 index=range(len(apply_age_start)))
-                print(f"\nNote: You did not provide an 'apply_snp_profile'. "
-                      f"iCARE will impute SNPs for {len(apply_age_start)} individuals, "
-                      f"to match the specified number of age intervals.\n")
-    else:
-        # Model includes covariates
-        if apply_covariates_profile is None or \
-                model_formula is None or \
-                model_log_relative_risk is None or \
-                model_reference_dataset is None or \
-                model_covariates_info is None:
-            raise ValueError("ERROR: Either all or none of the arguments— 'apply_covariates_profile', 'model_formula', "
-                             "'model_log_relative_risk', 'model_reference_dataset', and 'model_covariates_info'— "
-                             "should be None. If all of them are None, it implies a SNP-only model.")
-
-        model_includes_covariates = True
-
-    return model_includes_covariates, apply_snp_profile
 
 
 def process_snp_info(model_includes_covariates, apply_snp_profile, model_family_history_binary_variable_name,
@@ -237,3 +195,106 @@ def get_refs_risk(ref_pop, apply_age_start, apply_age_interval_length, lambda_0,
         refs_lps = np.mean(refs_lps.reshape((-1, n_imp), order="F"), axis=1)
 
     return refs_risk, refs_lps
+
+
+def configure_snp_model(
+        model_snp_info: Union[str, pathlib.Path, None],
+        apply_snp_profile: Union[str, pathlib.Path, None],
+        apply_age_start: Union[int, List[int]],
+        apply_age_interval_length: Union[int, List[int]],
+        config: dict
+) -> None:
+    if model_snp_info is None:
+        raise ValueError("ERROR: You appear to be fitting a SNP-only model, and thus you must provide relevant data "
+                         "to the 'model_snp_info' argument.")
+
+    config["snp_model"] = dict()
+
+    config["snp_model"]["info"] = read_file_to_dataframe(model_snp_info)
+
+    if apply_snp_profile is not None:
+        config["snp_model"]["profile"] = read_file_to_dataframe(apply_snp_profile)
+    else:
+        if isinstance(apply_age_start, int) and isinstance(apply_age_interval_length, int):
+            n_instances_imputed = 10_000
+            config["snp_model"]["profile"] = pd.DataFrame(
+                data=np.full((n_instances_imputed, config["snp_model"]["info"].shape[0]), np.nan)
+            )
+            print(f"\nNote: You did not provide an 'apply_snp_profile'. "
+                  f"iCARE will impute SNPs for {n_instances_imputed:,} individuals.")
+            print("If you want more/less, please specify an input to 'apply_snp_profile'.\n")
+        else:
+            config["snp_model"]["profile"] = pd.DataFrame(columns=config["snp_model"]["info"]["snp_info"],
+                                                          index=range(len(apply_age_start)))
+            print(f"\nNote: You did not provide an 'apply_snp_profile'. "
+                  f"iCARE will impute SNPs for {len(apply_age_start)} individuals, "
+                  f"to match the specified number of age intervals.\n")
+
+
+def read_file_to_string(file: Union[str, pathlib.Path]) -> str:
+    with open(file) as f:
+        return " ".join(f.read().splitlines())
+
+
+def read_file_to_dict(file: Union[str, pathlib.Path]) -> dict:
+    with open(file) as f:
+        return json.load(f)
+
+
+def read_file_to_dataframe(file: Union[str, pathlib.Path]) -> pd.DataFrame:
+    df = pd.read_csv(file)
+
+    if "id" in df.columns:
+        df = df.set_index("id")
+
+    return df
+
+
+def configure_covariate_model(
+        model_covariate_formula: Union[str, pathlib.Path, None],
+        model_log_relative_risk: Union[str, pathlib.Path, None],
+        model_reference_dataset: Union[str, pathlib.Path, None],
+        apply_covariate_profile: Union[str, pathlib.Path, None],
+        config: dict
+) -> None:
+    if model_covariate_formula is None or \
+            model_log_relative_risk is None or \
+            model_reference_dataset is None or \
+            apply_covariate_profile is None:
+        raise ValueError("ERROR: Either all or none of the following arguments— 'apply_covariate_profile', "
+                         "'model_covariate_formula', 'model_log_relative_risk', and 'model_reference_dataset'— should "
+                         "be specified. If none of them are specified, it implies a SNP-only model. If all of them are "
+                         "specified, it implies that covariates are present in the model.")
+
+    config["covariate_model"] = dict()
+
+    config["covariate_model"]["formula"] = read_file_to_string(model_covariate_formula)
+    config["covariate_model"]["log_relative_risk"] = read_file_to_dict(model_log_relative_risk)
+    config["covariate_model"]["reference_dataset"] = read_file_to_dataframe(model_reference_dataset)
+    config["covariate_model"]["profile"] = read_file_to_dataframe(apply_covariate_profile)
+
+
+def configure_run(
+        model_covariate_formula: Union[str, pathlib.Path, None],
+        model_log_relative_risk: Union[str, pathlib.Path, None],
+        model_reference_dataset: Union[str, pathlib.Path, None],
+        apply_covariate_profile: Union[str, pathlib.Path, None],
+        model_snp_info: Union[str, pathlib.Path, None],
+        apply_snp_profile: Union[str, pathlib.Path, None],
+        apply_age_start: Union[int, List[int]],
+        apply_age_interval_length: Union[int, List[int]]
+) -> dict:
+    config = dict()
+
+    if model_covariate_formula is None and \
+            model_log_relative_risk is None and \
+            model_reference_dataset is None and \
+            apply_covariate_profile is None:
+        # SNP-only model; no covariates model parameters were specified
+        configure_snp_model(model_snp_info, apply_snp_profile, apply_age_start, apply_age_interval_length, config)
+    else:
+        # at least one covariate model parameter was specified
+        configure_covariate_model(model_covariate_formula, model_log_relative_risk, model_reference_dataset,
+                                  apply_covariate_profile, config)
+
+    return config

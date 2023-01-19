@@ -1,6 +1,9 @@
+import pathlib
 import time
+from typing import Union, List, Optional
 
 import numpy as np
+import pandas as pd
 
 from icare import check_errors, misc, utils
 
@@ -10,22 +13,22 @@ def hello_world(name="world"):
 
 
 def compute_absolute_risk(
-        apply_age_start,
-        apply_age_interval_length, 
-        model_disease_incidence_rates,
-        model_formula=None,
-        model_covariates_info=None,
-        model_snp_info=None,
-        model_log_relative_risk=None,
-        model_reference_dataset=None,
-        model_ref_dataset_weights=None,
-        model_competing_incidence_rates=None,
-        model_family_history_binary_variable_name=None,
-        n_imp=5,
-        apply_covariates_profile=None,
-        apply_snp_profile=None,
-        return_lp=False,
-        return_refs_risk=False
+        apply_age_start: Union[int, List[int]],
+        apply_age_interval_length: Union[int, List[int]],
+        model_disease_incidence_rates: Union[str, pathlib.Path],
+        model_covariate_formula: Union[str, pathlib.Path, None] = None,
+        model_snp_info: Union[str, pathlib.Path, None] = None,
+        model_log_relative_risk: Union[str, pathlib.Path, None] = None,
+        model_reference_dataset: Union[str, pathlib.Path, None] = None,
+        model_reference_dataset_weights=None,
+        model_competing_incidence_rates: Union[str, pathlib.Path, None] = None,
+        model_family_history_binary_variable_name: Optional[str] = None,
+        num_imputations: int = 5,
+        apply_covariate_profile: Union[str, pathlib.Path, None] = None,
+        apply_snp_profile: Union[str, pathlib.Path, None] = None,
+        use_c_code: bool = False,
+        return_linear_predictors: bool = False,
+        return_reference_risks: bool = False
 ):
     """
     This function is used to build absolute risk models and apply them to estimate absolute risks.
@@ -36,22 +39,22 @@ def compute_absolute_risk(
         and apply_snp_profile, provide a list of ints of the same length as the number of rows in these profiles.
     :param apply_age_interval_length:
     :param model_disease_incidence_rates:
-    :param model_formula: a symbolic description (an R formula class object) of the model to be fitted,
-        e.g. Y~Parity+FamilyHistory.
+    :param model_covariate_formula: a symbolic description (an R formula class object) of the model to be fitted,
+        e.g. Y ~ parity + family_history.
     :param model_covariates_info: contains information (dict) about the risk factors in the model.
         The keys of the dict are the covariate names as strings. Each have a dict value associated with them
     :param model_snp_info: a dataframe with three columns, named: ["snp_name", "snp_odds_ratio", "snp_freq"].
     :param model_log_relative_risk: a list
     :param model_reference_dataset:
-    :param model_ref_dataset_weights:
+    :param model_reference_dataset_weights:
     :param model_competing_incidence_rates:
     :param model_family_history_binary_variable_name:
-    :param n_imp: the number of imputations (int) for handling missing SNPs.
-    :param apply_covariates_profile: a dataframe containing covairate profiles for which,
+    :param num_imputations: the number of imputations (int) for handling missing SNPs.
+    :param apply_covariate_profile: a dataframe containing covariate profiles for which,
     :param apply_snp_profile: a data frame with observed SNP data of allele dosages (coded 0, 1, 2, or “”). Missing
         values are allowed.
-    :param return_lp: set True to return the linear predictor for each subject in apply_covariates_profile.
-    :param return_refs_risk: set True to return the absolute risk prediction for each subject in model_ref_dataset.
+    :param return_linear_predictors: set True to return the linear predictor for each subject in apply_covariates_profile.
+    :param return_reference_risks: set True to return the absolute risk prediction for each subject in model_reference_dataset.
     :return: This function returns a list of results objects, including—
         1) risk,
         2) details,
@@ -59,10 +62,11 @@ def compute_absolute_risk(
         4) lps
         5) refs_risk
     """
-    model_includes_covariates, apply_snp_profile = utils.decide_if_snp_only(
-        apply_covariates_profile, model_formula, model_log_relative_risk,
-        model_reference_dataset, model_covariates_info, model_snp_info,
-        apply_snp_profile, apply_age_start, apply_age_interval_length
+
+    config = utils.configure_run(
+        model_covariate_formula, model_log_relative_risk, model_reference_dataset, apply_covariate_profile,
+        model_snp_info, apply_snp_profile,
+        apply_age_start, apply_age_interval_length
     )
 
     handle_snps = model_snp_info is not None
@@ -75,7 +79,7 @@ def compute_absolute_risk(
 
     if model_includes_covariates:
         apply_age_start, apply_age_interval_length = check_errors.check_age_lengths(
-            apply_age_start, apply_age_interval_length, apply_covariates_profile, "apply_covariates_profile"
+            apply_age_start, apply_age_interval_length, apply_covariate_profile, "apply_covariates_profile"
         )
 
     if handle_snps:
@@ -83,7 +87,7 @@ def compute_absolute_risk(
         model_snp_info["snp_betas"] = np.log(model_snp_info["snp_odds_ratio"])
         attenuate_fh, fh_pop, apply_snp_profile = utils.process_snp_info(
             model_includes_covariates, apply_snp_profile,
-            model_family_history_binary_variable_name, apply_covariates_profile,
+            model_family_history_binary_variable_name, apply_covariate_profile,
             model_reference_dataset, model_snp_info
         )
 
@@ -100,9 +104,9 @@ def compute_absolute_risk(
             pop_dist_mat = utils.sim_snps(
                 model_snp_info["snp_betas"].values,
                 model_snp_info["snp_freq"].values,
-                np.tile(fh_pop, n_imp)
+                np.tile(fh_pop, num_imputations)
             )
-            pop_weights = np.full((pop_dist_mat.shape[0], ), 1.0/pop_dist_mat.shape[0])
+            pop_weights = np.full((pop_dist_mat.shape[0],), 1.0 / pop_dist_mat.shape[0])
             beta_est = model_snp_info["snp_betas"].values
             z_new = apply_snp_profile.values.T
 
@@ -143,7 +147,7 @@ def compute_absolute_risk(
     if these.shape[0] > 0:
         ref_risks, _ = utils.get_refs_risk(
             ref_pop, apply_age_start, apply_age_interval_length, lambda_0, beta_est, model_competing_incidence_rates,
-            handle_snps, n_imp
+            handle_snps, num_imputations
         )
         final_risks[these] = np.average(
             ref_risks[~np.isnan(ref_risks)],
@@ -155,21 +159,21 @@ def compute_absolute_risk(
 
     result = misc.package_results(
         final_risks, z_new, model_includes_covariates, handle_snps, apply_age_start, apply_age_interval_length,
-        apply_covariates_profile, model_log_relative_risk, beta_est, apply_snp_profile,
-        model_snp_info["snp_name"].values, return_lp, lps
+        apply_covariate_profile, model_log_relative_risk, beta_est, apply_snp_profile,
+        model_snp_info["snp_name"].values, return_linear_predictors, lps
     )
 
-    if return_refs_risk:
+    if return_reference_risks:
         result["reference_risk"], _ = utils.get_refs_risk(
             ref_pop, apply_age_start, apply_age_interval_length, lambda_0, beta_est, model_competing_incidence_rates,
-            handle_snps, n_imp
+            handle_snps, num_imputations
         )
 
     return result
 
 
 def compute_absolute_risk_split_interval(
-        apply_age_start, 
+        apply_age_start,
         apply_age_interval_length,
         apply_cov_profile,
         model_formula,
@@ -178,20 +182,20 @@ def compute_absolute_risk_split_interval(
         model_ref_dataset,
         model_cov_info,
         model_ref_dataset_weights=None,
-        model_competing_incidence_rates = None,
-        return_lp = False,
-        apply_snp_profile = None,
-        model_snp_info = None,
-        model_bin_fh_name = None,
-        cut_time = None,
-        apply_cov_profile_2 = None,
-        model_formula_2 = None,
-        model_log_rr_2 = None,
-        model_ref_dataset_2 = None,
-        model_ref_dataset_weights_2 = None,
-        model_cov_info_2 = None,
-        model_bin_fh_name_2 = None,
-        n_imp = 5,
+        model_competing_incidence_rates=None,
+        return_lp=False,
+        apply_snp_profile=None,
+        model_snp_info=None,
+        model_bin_fh_name=None,
+        cut_time=None,
+        apply_cov_profile_2=None,
+        model_formula_2=None,
+        model_log_rr_2=None,
+        model_ref_dataset_2=None,
+        model_ref_dataset_weights_2=None,
+        model_cov_info_2=None,
+        model_bin_fh_name_2=None,
+        num_imputations=5,
         return_refs_risk=False
 ):
     """
@@ -220,7 +224,7 @@ def compute_absolute_risk_split_interval(
     :param model_ref_dataset_weights_2:
     :param model_cov_info_2:
     :param model_bin_fh_name_2:
-    :param n_imp:
+    :param num_imputations:
     :param return_refs_risk:
     """
     pass
