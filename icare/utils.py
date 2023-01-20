@@ -302,9 +302,15 @@ def configure_snp_model(
               f" instances as the supplied 'apply_covariate_profile'.\n")
 
     if model_family_history_variable_name is not None:
-        check_errors.check_family_history_variable_name(
+        check_errors.check_family_history(
             model_family_history_variable_name, config["covariate_model"]["reference_dataset"],
             config["covariate_model"]["profile"])
+        config["snp_model"]["family_history"] = dict()
+        config["snp_model"]["family_history"]["population"] = \
+            config["covariate_model"]["reference_dataset"][model_family_history_variable_name]
+        config["snp_model"]["family_history"]["profile"] = \
+            config["covariate_model"]["profile"][model_family_history_variable_name]
+        config["snp_model"]["family_history"]["attenuate"] = True
     else:
         config["snp_model"]["family_history"] = dict()
         config["snp_model"]["family_history"]["population"] = np.repeat(

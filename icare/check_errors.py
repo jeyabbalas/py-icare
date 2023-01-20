@@ -142,7 +142,7 @@ def check_snp_profile(
                          "number of SNPs in the 'model_snp_info' input.")
 
 
-def check_family_history_variable_name(
+def check_family_history(
         model_family_history_variable_name: str,
         model_reference_dataset: pd.DataFrame,
         apply_covariate_profile: pd.DataFrame) -> None:
@@ -156,3 +156,13 @@ def check_family_history_variable_name(
     if model_family_history_variable_name not in apply_covariate_profile.columns:
         raise ValueError("ERROR: The 'model_family_history_variable_name' input must be a column in the "
                          "'apply_covariate_profile' input.")
+
+    reference_fh_unique = model_reference_dataset[model_family_history_variable_name].dropna().unique().astype(int)
+    if reference_fh_unique.shape[0] != 2 or any([x not in reference_fh_unique for x in [0, 1]]):
+        raise ValueError("ERROR: Family history variable ('model_family_history_variable_name') in the "
+                         "'model_reference_dataset' input must be a binary variable.")
+
+    profile_fh_unique = apply_covariate_profile[model_family_history_variable_name].dropna().unique().astype(int)
+    if profile_fh_unique.shape[0] != 2 or any([x not in profile_fh_unique for x in [0, 1]]):
+        raise ValueError("ERROR: Family history variable ('model_family_history_variable_name') in the "
+                         "'apply_covariate_profile' input must be a binary variable.")
