@@ -105,7 +105,7 @@ def precise_lambda0(lambda_vals, approx_expectation_rr, beta_est, pop_dist_mat, 
         lambda_0["rate"] = lambda_vals["rate"].values / precise_expectation_rr0
         # that lambda0 implies new expectation rr
         this_survival = survival_given_x(lambda_0, beta_est, pop_dist_mat) * \
-            np.repeat(pop_weights, lambda_0.shape[0]).reshape(pop_weights.shape[0], lambda_0.shape[0])
+                        np.repeat(pop_weights, lambda_0.shape[0]).reshape(pop_weights.shape[0], lambda_0.shape[0])
         deno = 1. / np.sum(this_survival, axis=0)
         prob_x_given_t = this_survival * deno
 
@@ -128,11 +128,11 @@ def get_int(a, t, lambda_vals, z_new, beta_est, model_competing_incidence_rates,
     if z_beta is None:
         z_beta = np.exp(np.matmul(z_new.T, beta_est)).T
 
-    for u in range(np.nanmin(a), np.nanmax(t)+1):
+    for u in range(np.nanmin(a), np.nanmax(t) + 1):
         factor = 1 if ((u >= a) and (u < t)) else 0
         idx = np.where(u == model_competing_incidence_rates["age"])[0][0]
-        holder = holder + factor*((pick_lambda(u, lambda_vals)*z_beta) +
-                                  model_competing_incidence_rates["rate"].iloc[idx])
+        holder = holder + factor * ((pick_lambda(u, lambda_vals) * z_beta) +
+                                    model_competing_incidence_rates["rate"].iloc[idx])
 
     return holder
 
@@ -140,7 +140,7 @@ def get_int(a, t, lambda_vals, z_new, beta_est, model_competing_incidence_rates,
 def comp_a_j(z_new, apply_age_start, apply_age_interval_length, lambda_vals, beta_est, model_competing_incidence_rates):
     z_beta = np.exp(np.matmul(beta_est.T, z_new)).T
     a_vec = apply_age_start + apply_age_interval_length
-    t_vec = np.array(range(np.nanmin(apply_age_start), np.nanmax(a_vec)+1))
+    t_vec = np.array(range(np.nanmin(apply_age_start), np.nanmax(a_vec) + 1))
     t_idxs_in_lambda = [x for i, x in enumerate(t_vec) if x in lambda_vals["age"]]
     c2 = np.matmul(z_new.T, beta_est)
     c3 = np.log(lambda_vals.iloc[t_idxs_in_lambda]["rate"].values)
@@ -171,7 +171,7 @@ def handle_missing_data(apply_age_start, apply_age_interval_length, z_new, miss,
             lambda_0, beta_est, model_competing_incidence_rates
         )
 
-        probs = np.arange(0.0, 1.001, 1./n_cuts)
+        probs = np.arange(0.0, 1.001, 1. / n_cuts)
 
         for miss_i in miss:
             # make sure LPs based on non-missing covariates for the observation with missing
@@ -237,6 +237,13 @@ def configure_snp_only_model(model_snp_info: Union[str, pathlib.Path, None],
             print(f"\nNote: You did not provide an 'apply_snp_profile'. "
                   f"iCARE will impute SNPs for {len(apply_age_start)} individuals, "
                   f"to match the specified number of age intervals.\n")
+
+    config["snp_model"]["family_history"] = dict()
+    config["snp_model"]["family_history"]["population"] = np.repeat(0, 10_000)  # TODO: why 10_000?
+    config["snp_model"]["family_history"]["profile"] = np.repeat(0, len(config["snp_model"]["profile"]))
+    config["snp_model"]["family_history"]["attenuate"] = False
+    print("\nNote: You did not provide a 'model_family_history_variable_name', therefore "
+          "the model will not adjust the SNP imputations for family history.\n")
 
 
 def read_file_to_string(file: Union[str, pathlib.Path]) -> str:
@@ -319,8 +326,7 @@ def configure_snp_model(
             0, len(config["covariate_model"]["profile"]))
         config["snp_model"]["family_history"]["attenuate"] = False
         print("\nNote: You did not provide a 'model_family_history_variable_name', therefore "
-              "the model will not adjust the risk calculations for family history.\n")
-
+              "the model will not adjust the SNP imputations for family history.\n")
 
 
 def configure_run(model_covariate_formula: Union[str, pathlib.Path, None],
