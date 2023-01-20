@@ -22,7 +22,7 @@ def compute_absolute_risk(
         model_reference_dataset: Union[str, pathlib.Path, None] = None,
         model_reference_dataset_weights=None,
         model_competing_incidence_rates: Union[str, pathlib.Path, None] = None,
-        model_family_history_binary_variable_name: Optional[str] = None,
+        model_family_history_variable_name: Optional[str] = None,
         num_imputations: int = 5,
         apply_covariate_profile: Union[str, pathlib.Path, None] = None,
         apply_snp_profile: Union[str, pathlib.Path, None] = None,
@@ -48,7 +48,7 @@ def compute_absolute_risk(
     :param model_reference_dataset:
     :param model_reference_dataset_weights:
     :param model_competing_incidence_rates:
-    :param model_family_history_binary_variable_name:
+    :param model_family_history_variable_name:
     :param num_imputations: the number of imputations (int) for handling missing SNPs.
     :param apply_covariate_profile: a dataframe containing covariate profiles for which,
     :param apply_snp_profile: a data frame with observed SNP data of allele dosages (coded 0, 1, 2, or “”). Missing
@@ -65,7 +65,7 @@ def compute_absolute_risk(
 
     config = utils.configure_run(
         model_covariate_formula, model_log_relative_risk, model_reference_dataset, apply_covariate_profile,
-        model_snp_info, apply_snp_profile,
+        model_snp_info, apply_snp_profile, model_family_history_variable_name,
         apply_age_start, apply_age_interval_length
     )
 
@@ -87,7 +87,7 @@ def compute_absolute_risk(
         model_snp_info["snp_betas"] = np.log(model_snp_info["snp_odds_ratio"])
         attenuate_fh, fh_pop, apply_snp_profile = utils.process_snp_info(
             model_includes_covariates, apply_snp_profile,
-            model_family_history_binary_variable_name, apply_covariate_profile,
+            model_family_history_variable_name, apply_covariate_profile,
             model_reference_dataset, model_snp_info
         )
 

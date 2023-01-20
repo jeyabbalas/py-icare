@@ -1,3 +1,5 @@
+from typing import Union, List, Tuple
+
 import numpy as np
 import pandas as pd
 
@@ -24,16 +26,9 @@ def check_age_lengths(apply_age_start, apply_age_interval_length, match, match_n
     return apply_age_start, apply_age_interval_length
 
 
-def check_snp_info(model_snp_info):
-    if not isinstance(model_snp_info, pd.DataFrame):
-        raise ValueError("ERROR: If specified, the argument 'model_snp_info' requires a Pandas dataframe (that "
-                         "contains the information on SNP names, odds ratios, and allele frequencies.")
-
-    if "snp_name" not in model_snp_info.columns or \
-            "snp_odds_ratio" not in model_snp_info.columns or \
-            "snp_freq" not in model_snp_info.columns:
-        raise ValueError("ERROR: If specified, the argument 'model_snp_info' must be a Pandas dataframe with at least "
-                         "3 columns named: 'snp_name', 'snp_odds_ratio', and 'snp_freq'.")
+def check_snp_info(model_snp_info: pd.DataFrame) -> None:
+    if any([x not in model_snp_info.columns for x in ["snp_name", "snp_odds_ratio", "snp_freq"]]):
+        raise ValueError("ERROR: 'model_snp_info' must have columns 'snp_name', 'snp_odds_ratio', and 'snp_freq'.")
 
 
 def format_flexible_rate_inputs(data):
@@ -112,3 +107,52 @@ def check_rates(model_competing_incidence_rates, model_disease_incidence_rates, 
                          "another to proceed.")
     
     return lambda_vals, model_competing_incidence_rates
+
+
+def check_age_intervals(
+        apply_age_start: Union[int, List[int]],
+        apply_age_interval_length: Union[int, List[int]],
+        config: dict) -> None:
+    if not isinstance(apply_age_start, int) or not isinstance(apply_age_start, list):
+        raise ValueError("ERROR: The argument 'apply_age_start' must be an integer or a list of integers.")
+
+    if not isinstance(apply_age_interval_length, int) or not isinstance(apply_age_interval_length, list):
+        raise ValueError("ERROR: The argument 'apply_age_interval_length' must be an integer or a list of integers.")
+
+    if isinstance(apply_age_start, list):
+        if any([not isinstance(x, int) for x in apply_age_start]):
+            raise ValueError("ERROR: The argument 'apply_age_start' must be an integer or a list of integers.")
+
+    if isinstance(apply_age_interval_length, list):
+        if any([not isinstance(x, int) for x in apply_age_interval_length]):
+            raise ValueError("ERROR: The argument 'apply_age_interval_length' must be an integer or a list of "
+                             "integers.")
+
+
+def check_snp_profile(
+        apply_snp_profile: pd.DataFrame,
+        apply_covariate_profile: pd.DataFrame,
+        snp_names: np.ndarray) -> None:
+    if len(apply_snp_profile) != len(apply_covariate_profile):
+        raise ValueError("ERROR: The data in 'apply_snp_profile' and 'apply_covariate_profile' inputs must have "
+                         "the same number of rows.")
+
+    if apply_snp_profile.shape[1] != len(snp_names):
+        raise ValueError("ERROR: The 'apply_snp_profile' input must have the same number of columns as the "
+                         "number of SNPs in the 'model_snp_info' input.")
+
+
+def check_family_history_variable_name(
+        model_family_history_variable_name: str,
+        model_reference_dataset: pd.DataFrame,
+        apply_covariate_profile: pd.DataFrame) -> None:
+    if isinstance(model_family_history_variable_name, str):
+        raise ValueError("ERROR: The argument 'model_family_history_variable_name' must be a string.")
+
+    if model_family_history_variable_name not in model_reference_dataset.columns:
+        raise ValueError("ERROR: The 'model_family_history_variable_name' input must be a column in the "
+                         "'model_reference_dataset' input.")
+
+    if model_family_history_variable_name not in apply_covariate_profile.columns:
+        raise ValueError("ERROR: The 'model_family_history_variable_name' input must be a column in the "
+                         "'apply_covariate_profile' input.")
