@@ -219,11 +219,11 @@ def configure_snp_only_model(model_snp_info: Union[str, pathlib.Path, None],
     config["snp_model"] = dict()
     extract_snp_info(model_snp_info, config)
 
+    num_instances_imputed = 10_000
     if apply_snp_profile is not None:
         config["snp_model"]["profile"] = read_file_to_dataframe(apply_snp_profile)
     else:
         if isinstance(apply_age_start, int) and isinstance(apply_age_interval_length, int):
-            num_instances_imputed = 10_000
             config["snp_model"]["profile"] = pd.DataFrame(
                 data=np.full((num_instances_imputed, config["snp_model"]["snp_names"].shape[0]), np.nan)
             )
@@ -239,7 +239,7 @@ def configure_snp_only_model(model_snp_info: Union[str, pathlib.Path, None],
                   f"to match the specified number of age intervals.\n")
 
     config["snp_model"]["family_history"] = dict()
-    config["snp_model"]["family_history"]["population"] = np.repeat(0, 10_000)  # TODO: why 10_000?
+    config["snp_model"]["family_history"]["population"] = np.repeat(0, num_instances_imputed)
     config["snp_model"]["family_history"]["profile"] = np.repeat(0, len(config["snp_model"]["profile"]))
     config["snp_model"]["family_history"]["attenuate"] = False
     print("\nNote: You did not provide a 'model_family_history_variable_name', therefore "
@@ -314,9 +314,9 @@ def configure_snp_model(
             config["covariate_model"]["profile"])
         config["snp_model"]["family_history"] = dict()
         config["snp_model"]["family_history"]["population"] = \
-            config["covariate_model"]["reference_dataset"][model_family_history_variable_name]
+            config["covariate_model"]["reference_dataset"][model_family_history_variable_name].values
         config["snp_model"]["family_history"]["profile"] = \
-            config["covariate_model"]["profile"][model_family_history_variable_name]
+            config["covariate_model"]["profile"][model_family_history_variable_name].values
         config["snp_model"]["family_history"]["attenuate"] = True
     else:
         config["snp_model"]["family_history"] = dict()
