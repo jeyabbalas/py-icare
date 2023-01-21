@@ -287,7 +287,7 @@ def configure_covariate_model(model_covariate_formula: Union[str, pathlib.Path, 
     config["covariate_model"]["profile"] = read_file_to_dataframe(apply_covariate_profile)
 
 
-def configure_snp_model(
+def configure_snp_and_covariates_model(
         model_snp_info: Union[str, pathlib.Path, None],
         apply_snp_profile: Union[str, pathlib.Path, None],
         model_family_history_variable_name: Optional[str],
@@ -348,13 +348,13 @@ def configure_run(model_covariate_formula: Union[str, pathlib.Path, None],
         configure_covariate_model(model_covariate_formula, model_log_relative_risk, model_reference_dataset,
                                   apply_covariate_profile, config)
         if model_snp_info is not None:
-            configure_snp_model(model_snp_info, apply_snp_profile, model_family_history_variable_name, config)
+            configure_snp_and_covariates_model(model_snp_info, apply_snp_profile, model_family_history_variable_name,
+                                               config)
+        # lines 75-96 of the original code
     else:
         configure_snp_only_model(model_snp_info, apply_snp_profile, apply_age_start, apply_age_interval_length, config)
+        # lines 97-108 of the original code
 
     check_errors.check_age_intervals(apply_age_start, apply_age_interval_length, config)
-
-    # TODO: if snp model is present verify data
-    # TODO: if covariate model is present verify data
 
     return config

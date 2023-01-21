@@ -29,7 +29,7 @@ def snp_and_covariate_risk_test():
     model_covariate_formula = "data/breast_cancer_covariate_model_formula.txt"
     model_log_relative_risk = "data/breast_cancer_log_relative_risk.json"
     model_reference_dataset = "data/reference_covariate_data.csv"
-    model_family_history_binary_variable_name = "family_history"
+    model_family_history_variable_name = "family_history"
     apply_covariate_profile = "data/query_covariate_profile.csv"
 
     absolute_risk_main.compute_absolute_risk(
@@ -37,7 +37,7 @@ def snp_and_covariate_risk_test():
         model_covariate_formula=model_covariate_formula,
         model_log_relative_risk=model_log_relative_risk,
         model_reference_dataset=model_reference_dataset,
-        model_family_history_binary_variable_name=model_family_history_binary_variable_name,
+        model_family_history_variable_name=model_family_history_variable_name,
         model_disease_incidence_rates=model_disease_incidence_rates,
         model_competing_incidence_rates=model_competing_incidence_rates,
         apply_age_start=50,

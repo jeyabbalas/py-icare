@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from icare import check_errors, misc, utils
+from icare.model import AbsoluteRiskModel
 
 
 def hello_world(name="world"):
@@ -20,7 +21,7 @@ def compute_absolute_risk(
         model_snp_info: Union[str, pathlib.Path, None] = None,
         model_log_relative_risk: Union[str, pathlib.Path, None] = None,
         model_reference_dataset: Union[str, pathlib.Path, None] = None,
-        model_reference_dataset_weights=None,
+        model_reference_dataset_weights: Optional[List[float]] = None,
         model_competing_incidence_rates: Union[str, pathlib.Path, None] = None,
         model_family_history_variable_name: Optional[str] = None,
         num_imputations: int = 5,
@@ -63,11 +64,13 @@ def compute_absolute_risk(
         5) refs_risk
     """
 
-    config = utils.configure_run(
-        model_covariate_formula, model_log_relative_risk, model_reference_dataset, apply_covariate_profile,
-        model_snp_info, apply_snp_profile, model_family_history_variable_name,
-        apply_age_start, apply_age_interval_length
+    absolute_risk_model = AbsoluteRiskModel(
+        apply_age_start, apply_age_interval_length, model_disease_incidence_rates, model_covariate_formula,
+        model_snp_info, model_log_relative_risk, model_reference_dataset, model_reference_dataset_weights,
+        model_competing_incidence_rates, model_family_history_variable_name, num_imputations,
+        apply_covariate_profile, apply_snp_profile
     )
+
 
     handle_snps = model_snp_info is not None
     fh_pop = None
