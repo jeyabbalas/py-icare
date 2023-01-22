@@ -109,24 +109,33 @@ def check_rates(model_competing_incidence_rates, model_disease_incidence_rates, 
     return lambda_vals, model_competing_incidence_rates
 
 
-def check_age_intervals(
-        apply_age_start: Union[int, List[int]],
-        apply_age_interval_length: Union[int, List[int]],
-        config: dict) -> None:
-    if not isinstance(apply_age_start, int) or not isinstance(apply_age_start, list):
+def check_age_interval_types(
+        age_start: Union[int, List[int]],
+        age_interval_length: Union[int, List[int]]) -> None:
+    if not isinstance(age_start, int) or not isinstance(age_start, list):
         raise ValueError("ERROR: The argument 'apply_age_start' must be an integer or a list of integers.")
 
-    if not isinstance(apply_age_interval_length, int) or not isinstance(apply_age_interval_length, list):
+    if not isinstance(age_interval_length, int) or not isinstance(age_interval_length, list):
         raise ValueError("ERROR: The argument 'apply_age_interval_length' must be an integer or a list of integers.")
 
-    if isinstance(apply_age_start, list):
-        if any([not isinstance(x, int) for x in apply_age_start]):
+    if isinstance(age_start, list):
+        if any([not isinstance(x, int) for x in age_start]):
             raise ValueError("ERROR: The argument 'apply_age_start' must be an integer or a list of integers.")
 
-    if isinstance(apply_age_interval_length, list):
-        if any([not isinstance(x, int) for x in apply_age_interval_length]):
+    if isinstance(age_interval_length, list):
+        if any([not isinstance(x, int) for x in age_interval_length]):
             raise ValueError("ERROR: The argument 'apply_age_interval_length' must be an integer or a list of "
                              "integers.")
+
+
+def check_age_intervals(age_start: np.ndarray, age_interval_length: np.ndarray) -> None:
+    if np.isnan(age_start).any() or np.isnan(age_interval_length).any():
+        raise ValueError("ERROR: The 'apply_age_start' and 'apply_age_interval_length' inputs must not contain "
+                         "any missing values.")
+
+    if np.any(age_start < 0) or np.any(age_interval_length < 0):
+        raise ValueError("ERROR: The 'apply_age_start' and 'apply_age_interval_length' inputs must not contain "
+                         "any negative values.")
 
 
 def check_snp_profile(
@@ -166,3 +175,20 @@ def check_family_history(
     if profile_fh_unique.shape[0] != 2 or any([x not in profile_fh_unique for x in [0, 1]]):
         raise ValueError("ERROR: Family history variable ('model_family_history_variable_name') in the "
                          "'apply_covariate_profile' input must be a binary variable.")
+
+
+def check_population_weights(reference_dataset_weights: List[float], reference_dataset: pd.DataFrame) -> None:
+    if len(reference_dataset_weights) != len(reference_dataset):
+        raise ValueError("ERROR: the number of values in 'model_reference_dataset_weights' must match the number "
+                         "of rows in 'model_reference_dataset'.")
+
+    if any([x is None for x in reference_dataset_weights]):
+        raise ValueError("ERROR: the values in 'model_reference_dataset_weights' must not be missing.")
+
+    if any([x < 0 for x in reference_dataset_weights]):
+        raise ValueError("ERROR: the values in 'model_reference_dataset_weights' must be greater than or equal to "
+                         "zero.")
+
+    if sum(reference_dataset_weights) == 0:
+        raise ValueError("ERROR: the sum of the values in 'model_reference_dataset_weights' must be greater than "
+                         "zero.")

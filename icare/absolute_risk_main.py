@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from icare import check_errors, misc, utils
-from icare.model import AbsoluteRiskModel
+from icare.absolute_risk_model import AbsoluteRiskModel
 
 
 def hello_world(name="world"):
@@ -29,8 +29,7 @@ def compute_absolute_risk(
         apply_snp_profile: Union[str, pathlib.Path, None] = None,
         use_c_code: bool = False,
         return_linear_predictors: bool = False,
-        return_reference_risks: bool = False
-):
+        return_reference_risks: bool = False):
     """
     This function is used to build absolute risk models and apply them to estimate absolute risks.
 
@@ -199,8 +198,7 @@ def compute_absolute_risk_split_interval(
         model_cov_info_2=None,
         model_bin_fh_name_2=None,
         num_imputations=5,
-        return_refs_risk=False
-):
+        return_refs_risk=False):
     """
     This function is used to build an absolute risk model that incorporates different input parameters before and after
         a given time point. The model is then applied to estimate absolute risks.
