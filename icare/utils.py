@@ -247,17 +247,27 @@ def configure_snp_only_model(model_snp_info: Union[str, pathlib.Path, None],
 
 
 def read_file_to_string(file: Union[str, pathlib.Path]) -> str:
-    with open(file) as f:
+    with open(file, mode="r") as f:
         return " ".join(f.read().splitlines())
 
 
 def read_file_to_dict(file: Union[str, pathlib.Path]) -> dict:
-    with open(file) as f:
+    with open(file, mode="r") as f:
         return json.load(f)
 
 
 def read_file_to_dataframe(file: Union[str, pathlib.Path]) -> pd.DataFrame:
-    df = pd.read_csv(file)
+
+    with open(file, mode="r") as f:
+        header = f.readline().split(",")
+        first_row = f.readline().split(",")
+
+    dtype = dict()
+    for variable, value in zip(header, first_row):
+        if value.startswith('"') and value.endswith('"'):
+            dtype[variable] = object
+
+    df = pd.read_csv(file, dtype=dtype)
 
     if "id" in df.columns:
         df = df.set_index("id")
