@@ -19,8 +19,8 @@ def check_population_design_matrix(population_distribution: pd.DataFrame, log_re
 
 class CovariateModel:
     """A general-purpose covariate model."""
-    age_start: np.ndarray
-    age_interval_length: np.ndarray
+    age_start: Union[int, List[int]]
+    age_interval_length: Union[int, List[int]]
     beta_estimates: np.ndarray
     z_profile: pd.DataFrame
     population_distribution: pd.DataFrame
@@ -58,12 +58,6 @@ class CovariateModel:
         self.set_population_weights(reference_dataset_weights, reference_dataset)
         # set profile
         # check reference and profile
-
-    def get_age_start(self) -> np.ndarray:
-        return self.age_start
-
-    def get_age_interval_length(self) -> np.ndarray:
-        return self.age_interval_length
 
     def set_population_weights(
             self,

@@ -40,7 +40,7 @@ def format_flexible_rate_inputs(data):
         for i in range(data.shape[0]):
             idxs = np.where((data_formatted["age"] >= data.loc[i, "start_age"]) &
                             (data_formatted["age"] <= data.loc[i, "end_age"]))
-            data_formatted.loc[idxs, "rate"] = data_formatted.loc[i, "rate"]/idxs[0].shape[0]
+            data_formatted.loc[idxs, "rate"] = data_formatted.loc[i, "rate"] / idxs[0].shape[0]
 
         return data_formatted
     else:
@@ -69,7 +69,7 @@ def check_flexible_rate_inputs(data, data_name):
             raise ValueError(f"ERROR: argument '{data_name}' requires a Pandas DataFrame with columns:"
                              f" ['start_age', 'end_age', 'rate'].")
 
-        if data.shape[0] > 1 and (sum(data.loc[1:, "start_age"] - data.loc[:data.shape[0]-1, "end_age"]) != 0):
+        if data.shape[0] > 1 and (sum(data.loc[1:, "start_age"] - data.loc[:data.shape[0] - 1, "end_age"]) != 0):
             raise ValueError(f"ERROR: The rates provided in that Pandas DataFrame in the argument '{data_name}' must "
                              f"cover sequential age intervals (i.e. if an interval ends at age 30, the next interval "
                              f"must start at age 31).")
@@ -105,7 +105,7 @@ def check_rates(model_competing_incidence_rates, model_disease_incidence_rates, 
                          "integer age covered by the prediction intervals defined by 'apply_age_start' and "
                          "'apply_age_interval_length'. You must make these inputs consistent with one "
                          "another to proceed.")
-    
+
     return lambda_vals, model_competing_incidence_rates
 
 
@@ -128,33 +128,30 @@ def check_age_interval_types(
                              "integers.")
 
 
-def check_age_intervals(age_start: np.ndarray, age_interval_length: np.ndarray) -> None:
-    if np.isnan(age_start).any() or np.isnan(age_interval_length).any():
-        raise ValueError("ERROR: The 'apply_age_start' and 'apply_age_interval_length' inputs must not contain "
-                         "any missing values.")
-
-    if np.any(age_start < 0) or np.any(age_interval_length < 0):
+def check_age_intervals(age_start: List[int], age_interval_length: List[int]) -> None:
+    if any([x < 0 for x in age_start]) or any([x < 0 for x in age_interval_length]):
         raise ValueError("ERROR: The 'apply_age_start' and 'apply_age_interval_length' inputs must not contain "
                          "any negative values.")
 
 
-def check_snp_profile(
-        apply_snp_profile: pd.DataFrame,
-        apply_covariate_profile: pd.DataFrame,
-        snp_names: np.ndarray) -> None:
-    if len(apply_snp_profile) != len(apply_covariate_profile):
-        raise ValueError("ERROR: The data in 'apply_snp_profile' and 'apply_covariate_profile' inputs must have "
-                         "the same number of rows.")
-
+def check_snp_profile(apply_snp_profile: pd.DataFrame, snp_names: List[str]) -> None:
     if apply_snp_profile.shape[1] != len(snp_names):
         raise ValueError("ERROR: The 'apply_snp_profile' input must have the same number of columns as the "
                          "number of SNPs in the 'model_snp_info' input.")
 
+    if not all(apply_snp_profile.columns == snp_names):
+        raise ValueError("ERROR: The 'apply_snp_profile' input must have the same SNPs as those listed in "
+                         "'model_snp_info' input.")
 
-def check_family_history(
-        model_family_history_variable_name: str,
-        model_reference_dataset: pd.DataFrame,
-        apply_covariate_profile: pd.DataFrame) -> None:
+
+def check_profiles(apply_snp_profile: pd.DataFrame, apply_covariate_profile: pd.DataFrame) -> None:
+    if len(apply_snp_profile) != len(apply_covariate_profile):
+        raise ValueError("ERROR: The data in 'apply_snp_profile' and 'apply_covariate_profile' inputs must have "
+                         "the same number of rows.")
+
+
+def check_family_history(model_family_history_variable_name: str, model_reference_dataset: pd.DataFrame,
+                         apply_covariate_profile: pd.DataFrame) -> None:
     if isinstance(model_family_history_variable_name, str):
         raise ValueError("ERROR: The argument 'model_family_history_variable_name' must be a string.")
 

@@ -229,7 +229,7 @@ def read_file_to_dataframe(file: Union[str, pathlib.Path]) -> pd.DataFrame:
 
 
 def set_age_intervals(age_start: Union[int, List[int]], age_interval_length: Union[int, List[int]],
-                      profile: pd.DataFrame, profile_name: str) -> Tuple[np.ndarray, np.ndarray]:
+                      profile: pd.DataFrame, profile_name: str) -> Tuple[List[int], List[int]]:
     if isinstance(age_start, int):
         age_start = [age_start] * len(profile)
 
@@ -240,7 +240,6 @@ def set_age_intervals(age_start: Union[int, List[int]], age_interval_length: Uni
         raise ValueError(f"ERROR: the number of values in 'apply_age_start' and 'apply_age_interval_length', "
                          f"and the number of rows in '{profile_name}' must match.")
 
-    age_start, age_interval_length = np.array(age_start).astype(float), np.array(age_interval_length).astype(float)
     check_errors.check_age_intervals(age_start, age_interval_length)
 
     return age_start, age_interval_length
