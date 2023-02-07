@@ -1,6 +1,6 @@
 import json
 import pathlib
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -199,53 +199,6 @@ def get_refs_risk(ref_pop, apply_age_start, apply_age_interval_length, lambda_0,
     return refs_risk, refs_lps
 
 
-def extract_snp_info(model_snp_info, config) -> None:
-    snp_info = read_file_to_dataframe(model_snp_info)
-    check_errors.check_snp_info(snp_info)
-    config["snp_model"]["snp_names"] = snp_info["snp_name"].values
-    config["snp_model"]["snp_betas"] = np.log(snp_info["snp_odds_ratio"].values)
-    config["snp_model"]["snp_freqs"] = snp_info["snp_freq"].values
-
-
-def configure_snp_only_model(model_snp_info: Union[str, pathlib.Path, None],
-                             apply_snp_profile: Union[str, pathlib.Path, None],
-                             apply_age_start: Union[int, List[int]],
-                             apply_age_interval_length: Union[int, List[int]],
-                             config: dict) -> None:
-    if model_snp_info is None:
-        raise ValueError("ERROR: You appear to be fitting a SNP-only model, and thus you must provide relevant data "
-                         "to the 'model_snp_info' argument.")
-
-    config["snp_model"] = dict()
-    extract_snp_info(model_snp_info, config)
-
-    num_instances_imputed = 10_000
-    if apply_snp_profile is not None:
-        config["snp_model"]["profile"] = read_file_to_dataframe(apply_snp_profile)
-    else:
-        if isinstance(apply_age_start, int) and isinstance(apply_age_interval_length, int):
-            config["snp_model"]["profile"] = pd.DataFrame(
-                data=np.full((num_instances_imputed, config["snp_model"]["snp_names"].shape[0]), np.nan)
-            )
-            print(f"\nNote: You did not provide an 'apply_snp_profile'. "
-                  f"iCARE will impute SNPs for {num_instances_imputed:,} individuals.")
-            print("If you want more/less, please specify an input to 'apply_snp_profile'.\n")
-        else:
-            config["snp_model"]["profile"] = pd.DataFrame(
-                data=np.full((len(apply_age_start), config["snp_model"]["snp_names"].shape[0]), np.nan)
-            )
-            print(f"\nNote: You did not provide an 'apply_snp_profile'. "
-                  f"iCARE will impute SNPs for {len(apply_age_start)} individuals, "
-                  f"to match the specified number of age intervals.\n")
-
-    config["snp_model"]["family_history"] = dict()
-    config["snp_model"]["family_history"]["population"] = np.repeat(0, num_instances_imputed)
-    config["snp_model"]["family_history"]["profile"] = np.repeat(0, len(config["snp_model"]["profile"]))
-    config["snp_model"]["family_history"]["attenuate"] = False
-    print("\nNote: You did not provide a 'model_family_history_variable_name', therefore "
-          "the model will not adjust the SNP imputations for family history.\n")
-
-
 def read_file_to_string(file: Union[str, pathlib.Path]) -> str:
     with open(file, mode="r") as f:
         return " ".join(f.read().splitlines())
@@ -275,26 +228,22 @@ def read_file_to_dataframe(file: Union[str, pathlib.Path]) -> pd.DataFrame:
     return df
 
 
-def configure_covariate_model(model_covariate_formula: Union[str, pathlib.Path, None],
-                              model_log_relative_risk: Union[str, pathlib.Path, None],
-                              model_reference_dataset: Union[str, pathlib.Path, None],
-                              apply_covariate_profile: Union[str, pathlib.Path, None],
-                              config: dict) -> None:
-    covariate_parameters = [model_covariate_formula, model_log_relative_risk, model_reference_dataset,
-                            apply_covariate_profile]
-    any_covariate_parameter_missing = any([x is None for x in covariate_parameters])
+def set_age_intervals(age_start: Union[int, List[int]], age_interval_length: Union[int, List[int]],
+                      profile: pd.DataFrame, profile_name: str) -> Tuple[np.ndarray, np.ndarray]:
+    if isinstance(age_start, int):
+        age_start = [age_start] * len(profile)
 
-    if any_covariate_parameter_missing:
-        raise ValueError("ERROR: Either all or none of the following arguments— 'apply_covariate_profile', "
-                         "'model_covariate_formula', 'model_log_relative_risk', and 'model_reference_dataset'— should "
-                         "be specified. If none of them are specified, it implies a SNP-only model.")
+    if isinstance(age_interval_length, int):
+        age_interval_length = [age_interval_length] * len(profile)
 
-    config["covariate_model"] = dict()
+    if len(age_start) != len(profile) or len(age_interval_length) != len(profile):
+        raise ValueError(f"ERROR: the number of values in 'apply_age_start' and 'apply_age_interval_length', "
+                         f"and the number of rows in '{profile_name}' must match.")
 
-    config["covariate_model"]["formula"] = read_file_to_string(model_covariate_formula)
-    config["covariate_model"]["log_relative_risk"] = read_file_to_dict(model_log_relative_risk)
-    config["covariate_model"]["reference_dataset"] = read_file_to_dataframe(model_reference_dataset)
-    config["covariate_model"]["profile"] = read_file_to_dataframe(apply_covariate_profile)
+    age_start, age_interval_length = np.array(age_start).astype(float), np.array(age_interval_length).astype(float)
+    check_errors.check_age_intervals(age_start, age_interval_length)
+
+    return age_start, age_interval_length
 
 
 def configure_snp_and_covariates_model(
@@ -303,7 +252,6 @@ def configure_snp_and_covariates_model(
         model_family_history_variable_name: Optional[str],
         config: dict) -> None:
     config["snp_model"] = dict()
-    extract_snp_info(model_snp_info, config)
 
     if apply_snp_profile is not None:
         config["snp_model"]["profile"] = read_file_to_dataframe(apply_snp_profile)
@@ -337,34 +285,3 @@ def configure_snp_and_covariates_model(
         config["snp_model"]["family_history"]["attenuate"] = False
         print("\nNote: You did not provide a 'model_family_history_variable_name', therefore "
               "the model will not adjust the SNP imputations for family history.\n")
-
-
-def configure_run(model_covariate_formula: Union[str, pathlib.Path, None],
-                  model_log_relative_risk: Union[str, pathlib.Path, None],
-                  model_reference_dataset: Union[str, pathlib.Path, None],
-                  apply_covariate_profile: Union[str, pathlib.Path, None],
-                  model_snp_info: Union[str, pathlib.Path, None],
-                  apply_snp_profile: Union[str, pathlib.Path, None],
-                  model_family_history_variable_name: Optional[str],
-                  apply_age_start: Union[int, List[int]],
-                  apply_age_interval_length: Union[int, List[int]]) -> dict:
-    config = dict()
-
-    covariate_parameters = [model_covariate_formula, model_log_relative_risk, model_reference_dataset,
-                            apply_covariate_profile]
-    any_covariate_parameter_specified = any([x is not None for x in covariate_parameters])
-
-    if any_covariate_parameter_specified:
-        configure_covariate_model(model_covariate_formula, model_log_relative_risk, model_reference_dataset,
-                                  apply_covariate_profile, config)
-        if model_snp_info is not None:
-            configure_snp_and_covariates_model(model_snp_info, apply_snp_profile, model_family_history_variable_name,
-                                               config)
-        # lines 75-96 of the original code
-    else:
-        configure_snp_only_model(model_snp_info, apply_snp_profile, apply_age_start, apply_age_interval_length, config)
-        # lines 97-108 of the original code
-
-    check_errors.check_age_intervals(apply_age_start, apply_age_interval_length, config)
-
-    return config

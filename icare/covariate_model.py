@@ -41,13 +41,17 @@ class CovariateModel:
         if any_parameter_missing:
             raise ValueError("ERROR: Either all or none of the covariate parameters— 'model_covariate_formula', "
                              "'model_log_relative_risk', 'model_reference_dataset', and 'apply_covariate_profile'"
-                             "— should be specified. If none of them are specified, it implies a SNP-only model.")
+                             "— should be specified. If none of them are specified, it implies the special option "
+                             "for a SNP-only model.")
 
         formula = utils.read_file_to_string(formula_path)
         log_relative_risk = utils.read_file_to_dict(log_relative_risk_path)
         reference_dataset = utils.read_file_to_dataframe(reference_dataset_path)
         profile = utils.read_file_to_dataframe(profile_path)
-        self.set_age_intervals(age_start, age_interval_length, profile)
+
+        self.age_start, self.age_interval_length = utils.set_age_intervals(
+            age_start, age_interval_length, profile, "apply_covariate_profile"
+        )
 
         check_errors.check_covariate_parameters(log_relative_risk, reference_dataset, profile)
         self.set_population_distribution(formula, reference_dataset, log_relative_risk)
@@ -55,28 +59,11 @@ class CovariateModel:
         # set profile
         # check reference and profile
 
-    def set_age_intervals(
-            self,
-            age_start: Union[int, List[int]],
-            age_interval_length: Union[int, List[int]],
-            profile: pd.DataFrame) -> None:
-        check_errors.check_age_interval_types(age_start, age_interval_length)
+    def get_age_start(self) -> np.ndarray:
+        return self.age_start
 
-        if isinstance(age_start, int):
-            age_start = [age_start]*len(profile)
-
-        if isinstance(age_interval_length, int):
-            age_interval_length = [age_interval_length]*len(profile)
-
-        if len(age_start) != len(profile) or len(age_interval_length) != len(profile):
-            raise ValueError("ERROR: the number of values in 'apply_age_start' and 'apply_age_interval_length', "
-                             "and the number of rows in 'apply_covariate_profile' must match.")
-
-        age_start, age_interval_length = np.array(age_start).astype(float), np.array(age_interval_length).astype(float)
-        check_errors.check_age_intervals(age_start, age_interval_length)
-
-        self.age_start = age_start
-        self.age_interval_length = age_interval_length
+    def get_age_interval_length(self) -> np.ndarray:
+        return self.age_interval_length
 
     def set_population_weights(
             self,
