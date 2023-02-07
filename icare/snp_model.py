@@ -61,8 +61,8 @@ class SnpModel:
     iCARE's special option for specifying a SNP model without the need to provide a
     reference dataset that the general-purpose covariate model requires.
     """
-    age_start: np.ndarray
-    age_interval_length: np.ndarray
+    age_start: Union[int, List[int]]
+    age_interval_length: Union[int, List[int]]
     beta_estimates: np.ndarray
     z_profile: pd.DataFrame
     population_distribution: pd.DataFrame
