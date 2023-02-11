@@ -40,6 +40,12 @@ def compute_absolute_risk(
     :param model_disease_incidence_rates:
     :param model_covariate_formula: a symbolic description (an R formula class object) of the model to be fitted,
         e.g. Y ~ parity + family_history.
+        Please make sure that the variable name in your dataset is not from the namespace of the Python execution
+        evironment, including Python standard library, numpy, pandas, patsy, and icare.
+        For example, a variable name "C" and "Q" would conflict with Patsy built-in functions of the same name.
+        Variable names with the R-style periods in them should be surrounded by the quote function Q(family.history).
+        In Python periods are used to access attributes of objects, so they are not allowed in variable names unless
+        surrounded by Q().
     :param model_snp_info: a dataframe with three columns, named: ["snp_name", "snp_odds_ratio", "snp_freq"].
     :param model_log_relative_risk: a list
     :param model_reference_dataset:

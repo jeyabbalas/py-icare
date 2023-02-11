@@ -54,12 +54,13 @@ class CovariateModel:
         )
 
         check_errors.check_covariate_parameters(log_relative_risk, reference_dataset, profile)
-        self.set_population_distribution(formula, reference_dataset, log_relative_risk)
-        self.set_population_weights(reference_dataset_weights, reference_dataset)
+        self._set_population_distribution(formula, reference_dataset, log_relative_risk)
+        self._set_population_weights(reference_dataset_weights, reference_dataset)
+        # TODO: infer profile dtype from reference dataset
         # set profile
         # check reference and profile
 
-    def set_population_weights(
+    def _set_population_weights(
             self,
             reference_dataset_weights: Optional[List[float]],
             reference_dataset: pd.DataFrame) -> None:
@@ -69,7 +70,7 @@ class CovariateModel:
             check_errors.check_population_weights(reference_dataset_weights, reference_dataset)
             self.population_weights = np.array(reference_dataset_weights) / sum(reference_dataset_weights)
 
-    def set_population_distribution(
+    def _set_population_distribution(
             self,
             formula: str,
             reference_dataset: pd.DataFrame,
