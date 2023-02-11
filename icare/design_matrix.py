@@ -65,5 +65,5 @@ def get_design_matrix_column_name_matching_data_column_name(design_matrix, data,
                 continue
 
             if data_column_name in data_columns_in_factor:
-                return term.name()
+                return design_matrix.columns[term_slice][0]
     return None
