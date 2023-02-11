@@ -210,7 +210,6 @@ def read_file_to_dict(file: Union[str, pathlib.Path]) -> dict:
 
 
 def read_file_to_dataframe(file: Union[str, pathlib.Path]) -> pd.DataFrame:
-
     with open(file, mode="r") as f:
         header = f.readline().split(",")
         first_row = f.readline().split(",")

@@ -27,6 +27,7 @@ def get_python_name_tokens(factor_name: str) -> str:
 def get_design_matrix_missing_pattern(design_matrix: pd.DataFrame, missing_mask: pd.DataFrame) -> pd.DataFrame:
     design_matrix_missing_pattern = pd.DataFrame(
         data=np.zeros(shape=design_matrix.shape, dtype=bool),
+        index=design_matrix.index,
         columns=design_matrix.columns
     )
 
@@ -35,7 +36,8 @@ def get_design_matrix_missing_pattern(design_matrix: pd.DataFrame, missing_mask:
         term_missing_pattern = np.zeros(shape=(len(design_matrix),), dtype=bool)
 
         for factor in term.factors:
-            data_columns_in_factor = [token for token in get_python_name_tokens(factor.name()) if token in missing_mask.columns]
+            data_columns_in_factor = [token for token in get_python_name_tokens(factor.name()) if
+                                      token in missing_mask.columns]
             factor_missing_pattern = missing_mask[data_columns_in_factor]
             if len(data_columns_in_factor) > 1:
                 factor_missing_pattern = factor_missing_pattern.any(axis=0)
@@ -44,3 +46,24 @@ def get_design_matrix_missing_pattern(design_matrix: pd.DataFrame, missing_mask:
         design_matrix_missing_pattern.iloc[:, term_slice] = term_missing_pattern
 
     return design_matrix_missing_pattern
+
+
+def reintroduce_missing_values(design_matrix: pd.DataFrame, missing_pattern: pd.DataFrame):
+    design_matrix[missing_pattern] = np.nan
+
+
+def get_design_matrix_column_name_matching_data_column_name(design_matrix, data, data_column_name):
+    for term, term_slice in design_matrix.design_info.term_slices.items():
+
+        num_columns = term_slice.stop - term_slice.start
+        if num_columns > 1 or len(term.factors) > 1:
+            continue
+
+        for factor in term.factors:
+            data_columns_in_factor = [token for token in get_python_name_tokens(factor.name()) if token in data.columns]
+            if len(data_columns_in_factor) > 1:
+                continue
+
+            if data_column_name in data_columns_in_factor:
+                return term.name()
+    return None
