@@ -191,25 +191,56 @@ def check_population_weights(reference_dataset_weights: List[float], reference_d
                          "zero.")
 
 
-def check_covariate_parameters(log_relative_risk: dict, reference_dataset: pd.DataFrame,
-                               profile: pd.DataFrame) -> None:
-    if reference_dataset.shape[0] == 0:
-        raise ValueError("ERROR: the 'model_reference_dataset' input must not be empty.")
-
+def check_covariate_reference_dataset(reference_dataset: pd.DataFrame) -> None:
     if reference_dataset.shape[0] < 200:
         raise ValueError("ERROR: the 'model_reference_dataset' input must contain at least 200 rows.")
 
     if reference_dataset.isnull().values.any():
         raise ValueError("ERROR: the 'model_reference_dataset' input must not contain any missing values.")
 
+
+def check_covariate_log_relative_risk(log_relative_risk: dict, population_distribution: pd.DataFrame) -> None:
+    if len(log_relative_risk) == 0:
+        raise ValueError("ERROR: the 'log_relative_risk' input must not be empty.")
+
+    if not isinstance(log_relative_risk, dict):
+        raise ValueError("ERROR: the 'log_relative_risk' input must be a dictionary.")
+
+    if any([not isinstance(x, str) for x in log_relative_risk.keys()]):
+        raise ValueError("ERROR: the keys in the 'log_relative_risk' input must be design matrix variable "
+                         "names as strings.")
+
+    if any([not isinstance(x, float) for x in log_relative_risk.values()]):
+        raise ValueError("ERROR: the values in the 'log_relative_risk' input must be floats corresponding "
+                         "to the log relative risk associated with the design matrix variable.")
+
+    if any([x not in population_distribution.columns for x in log_relative_risk.keys()]):
+        print(f"'model_reference_dataset' design matrix columns: {population_distribution.columns}")
+        print(f"'model_log_relative_risk' keys: {log_relative_risk.keys()}")
+        raise ValueError("ERROR: the keys in the 'log_relative_risk' input must correspond to the column "
+                         "names in the 'population_distribution' design matrix resulting from the input "
+                         " Patsy formula in 'model_covariate_formula'.")
+
+
+def check_covariate_profile(reference_dataset: pd.DataFrame, profile: pd.DataFrame) -> None:
     if len(reference_dataset.columns.difference(profile.columns)):
         raise ValueError("ERROR: the 'model_reference_dataset' input must contain the same columns in the "
                          "'apply_covariate_profile' input.")
 
-    for key, value in log_relative_risk.items():
-        if not isinstance(key, str):
-            raise ValueError("ERROR: the keys in the 'log_relative_risk' input must be strings corresponding "
-                             "to the variable names in the design matrix.")
-        if not isinstance(value, float):
-            raise ValueError("ERROR: the values in the 'log_relative_risk' input must be floats corresponding "
-                             "to the log relative risk associated with each covariate specified in the key.")
+
+def check_num_imputations(num_imputations: int) -> None:
+    if not isinstance(num_imputations, int):
+        raise ValueError("ERROR: The argument 'num_imputations' must be an integer.")
+
+    if num_imputations < 1 or num_imputations > 20:
+        raise ValueError("ERROR: The argument 'num_imputations' must be between 1 and 20.")
+
+
+def check_covariate_profile_against_reference_population(z_profile: pd.DataFrame,
+                                                         population_distribution: pd.DataFrame) -> None:
+    if z_profile.columns != population_distribution.columns:
+        print(f"'model_reference_dataset' design matrix columns: {population_distribution.columns}")
+        print(f"'apply_covariate_profile' design matrix columns: {z_profile.columns}")
+        raise ValueError("ERROR: The design matrix, resulting from the Patsy formula in 'model_covariate_formula'"
+                         ", for 'apply_covariate_profile' do not match the design matrix resulting from the "
+                         "'model_reference_dataset' input.")

@@ -73,22 +73,7 @@ def compute_absolute_risk(
         apply_covariate_profile, apply_snp_profile
     )
 
-    handle_snps = model_snp_info is not None
-    fh_pop = None
-    pop_dist_mat = None
-    pop_weights = None
-    beta_est = None
-    z_new = None
-    ref_risks = None
-
-    if model_includes_covariates:
-        apply_age_start, apply_age_interval_length = check_errors.check_age_lengths(
-            apply_age_start, apply_age_interval_length, apply_covariate_profile, "apply_covariates_profile"
-        )
-
     if handle_snps:
-        check_errors.check_snp_info(model_snp_info)
-        model_snp_info["snp_betas"] = np.log(model_snp_info["snp_odds_ratio"])
         attenuate_fh, fh_pop, apply_snp_profile = utils.process_snp_info(
             model_includes_covariates, apply_snp_profile,
             model_family_history_variable_name, apply_covariate_profile,

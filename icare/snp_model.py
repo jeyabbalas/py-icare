@@ -25,7 +25,7 @@ def set_snp_profile(profile_path: Union[str, pathlib.Path, None], age_start: Uni
                     snp_names: List[str], covariate_model: Optional[CovariateModel],
                     num_samples_imputed: int) -> pd.DataFrame:
     if profile_path is not None:
-        profile = utils.read_file_to_dataframe(profile_path)
+        profile = utils.read_file_to_dataframe_given_dtype(profile_path, dtype=np.float64)
         profile = profile[snp_names]
         check_errors.check_snp_profile(profile, snp_names)
         if covariate_model is not None:

@@ -3,6 +3,7 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
+from patsy import dmatrix
 from patsy.tokens import python_tokenize
 
 
@@ -75,3 +76,22 @@ def get_design_matrix_column_name_matching_data_column_name(design_matrix: pd.Da
             if data_column_name in data_columns_in_factor:
                 return design_matrix.columns[term_slice][0]
     return None
+
+
+def build_design_matrix(formula: str, dataset: pd.DataFrame) -> pd.DataFrame:
+    design_matrix = dmatrix(formula, dataset, return_type="dataframe")
+
+    if "Intercept" in design_matrix.columns:
+        design_matrix.drop("Intercept", axis=1, inplace=True)
+
+    return design_matrix
+
+
+def build_design_matrix_with_missing_values(formula: str, dataset: pd.DataFrame,
+                                            dataset_complete: pd.DataFrame) -> pd.DataFrame:
+    missing_mask = create_missing_values_mask(dataset)
+    dataset_imputed = impute_dataframe(dataset, get_arbitrary_column_values(dataset_complete))
+    design_matrix = build_design_matrix(formula, dataset_imputed)
+    reintroduce_missing_values(design_matrix, get_design_matrix_missing_pattern(design_matrix, missing_mask))
+
+    return design_matrix

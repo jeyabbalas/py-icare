@@ -20,6 +20,7 @@ class AbsoluteRiskModel:
     z_profile: pd.DataFrame
     population_distribution: pd.DataFrame
     population_weights: np.ndarray
+    num_imputations: int
 
     baseline_hazard_function: Dict[int, float]
     competing_incidence_rates_function: Dict[int, float]
@@ -41,6 +42,9 @@ class AbsoluteRiskModel:
             snp_profile_path: Union[str, pathlib.Path, None]) -> None:
         check_errors.check_age_interval_types(apply_age_start, apply_age_interval_length)
         self.age_start, self.age_interval_length = apply_age_start, apply_age_interval_length
+
+        check_errors.check_num_imputations(num_imputations)
+        self.num_imputations = num_imputations
 
         covariate_parameters = [formula_path, log_relative_risk_path, reference_dataset_path, covariate_profile_path]
         any_covariate_parameter_specified = any([x is not None for x in covariate_parameters])
