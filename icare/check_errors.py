@@ -1,4 +1,4 @@
-from typing import Union, List, Tuple
+from typing import Union, List
 
 import numpy as np
 import pandas as pd
@@ -236,11 +236,11 @@ def check_num_imputations(num_imputations: int) -> None:
         raise ValueError("ERROR: The argument 'num_imputations' must be between 1 and 20.")
 
 
-def check_covariate_profile_against_reference_population(z_profile: pd.DataFrame,
+def check_covariate_profile_against_reference_population(profile: pd.DataFrame,
                                                          population_distribution: pd.DataFrame) -> None:
-    if z_profile.columns != population_distribution.columns:
+    if not all(profile.columns == population_distribution.columns):
         print(f"'model_reference_dataset' design matrix columns: {population_distribution.columns}")
-        print(f"'apply_covariate_profile' design matrix columns: {z_profile.columns}")
+        print(f"'apply_covariate_profile' design matrix columns: {profile.columns}")
         raise ValueError("ERROR: The design matrix, resulting from the Patsy formula in 'model_covariate_formula'"
                          ", for 'apply_covariate_profile' do not match the design matrix resulting from the "
                          "'model_reference_dataset' input.")

@@ -223,26 +223,23 @@ def read_file_to_dataframe(file: Union[str, pathlib.Path]) -> pd.DataFrame:
     df = pd.read_csv(file, dtype=dtype)
 
     if "id" in df.columns:
-        df = df.set_index("id")
+        df.set_index("id", inplace=True)
 
     return df
 
 
-def read_file_to_dataframe_given_dtype(file: Union[str, pathlib.Path],
-                                       dtype: Union[dict, pd.Series, np.dtype]) -> pd.DataFrame:
+def read_file_to_dataframe_given_dtype(file: Union[str, pathlib.Path], dtype: Union[dict, np.dtype]) -> pd.DataFrame:
     header = pd.read_csv(file, nrows=1).columns
     if "id" in header:
-        if isinstance(dtype, dict):
-            dtype = {"id": object, **dtype}
-        elif isinstance(dtype, pd.Series):
-            dtype = pd.Series({"id": object, **dtype.to_dict()})
+        if isinstance(dtype, dict) and "id" not in dtype:
+            dtype = {"id": str, **dtype}
         else:
-            dtype = {"id": object, **{col: dtype for col in header if col != "id"}}
+            dtype = {"id": str, **{col: dtype for col in header if col != "id"}}
 
     df = pd.read_csv(file, dtype=dtype)
 
     if "id" in df.columns:
-        df = df.set_index("id")
+        df.set_index("id", inplace=True)
 
     return df
 

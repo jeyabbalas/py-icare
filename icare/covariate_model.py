@@ -16,15 +16,14 @@ class CovariateModel:
     population_distribution: pd.DataFrame
     population_weights: np.ndarray
 
-    def __init__(
-            self,
-            formula_path: Union[str, pathlib.Path, None],
-            log_relative_risk_path: Union[str, pathlib.Path, None],
-            reference_dataset_path: Union[str, pathlib.Path, None],
-            profile_path: Union[str, pathlib.Path, None],
-            reference_dataset_weights: Optional[List[float]],
-            age_start: Union[int, List[int]],
-            age_interval_length: Union[int, List[int]]) -> None:
+    def __init__(self,
+                 formula_path: Union[str, pathlib.Path, None],
+                 log_relative_risk_path: Union[str, pathlib.Path, None],
+                 reference_dataset_path: Union[str, pathlib.Path, None],
+                 profile_path: Union[str, pathlib.Path, None],
+                 reference_dataset_weights: Optional[List[float]],
+                 age_start: Union[int, List[int]],
+                 age_interval_length: Union[int, List[int]]) -> None:
         parameters = [formula_path, log_relative_risk_path, reference_dataset_path, profile_path]
         any_parameter_missing = any([x is None for x in parameters])
 
@@ -37,7 +36,7 @@ class CovariateModel:
         formula = utils.read_file_to_string(formula_path)
         log_relative_risk = utils.read_file_to_dict(log_relative_risk_path)
         reference_dataset = utils.read_file_to_dataframe(reference_dataset_path)
-        profile = utils.read_file_to_dataframe_given_dtype(profile_path, dtype=reference_dataset.dtypes)
+        profile = utils.read_file_to_dataframe_given_dtype(profile_path, dtype=reference_dataset.dtypes.to_dict())
 
         self.age_start, self.age_interval_length = utils.set_age_intervals(
             age_start, age_interval_length, profile, "apply_covariate_profile"
