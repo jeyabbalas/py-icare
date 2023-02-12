@@ -47,7 +47,7 @@ class CovariateModel:
         formula = utils.read_file_to_string(formula_path)
         log_relative_risk = utils.read_file_to_dict(log_relative_risk_path)
         reference_dataset = utils.read_file_to_dataframe(reference_dataset_path)
-        profile = utils.read_file_to_dataframe(profile_path)
+        profile = utils.read_file_to_dataframe_with_dtype(profile_path, dtype=reference_dataset.dtypes)
 
         self.age_start, self.age_interval_length = utils.set_age_intervals(
             age_start, age_interval_length, profile, "apply_covariate_profile"
@@ -56,7 +56,6 @@ class CovariateModel:
         check_errors.check_covariate_parameters(log_relative_risk, reference_dataset, profile)
         self._set_population_distribution(formula, reference_dataset, log_relative_risk)
         self._set_population_weights(reference_dataset_weights, reference_dataset)
-        # TODO: infer profile dtype from reference dataset
         # set profile
         # check reference and profile
 

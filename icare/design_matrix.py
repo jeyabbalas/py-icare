@@ -1,4 +1,5 @@
 import tokenize
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -18,8 +19,14 @@ def impute_dataframe(df: pd.DataFrame, values: pd.Series) -> pd.DataFrame:
 
 
 def get_python_name_tokens(factor_name: str) -> str:
+    return_string = False
     for token in python_tokenize(factor_name):
         token_type, token_name = token[0], token[1]
+        if token_type == tokenize.NAME and token_name == "Q":
+            return_string = True
+        elif token_type == tokenize.STRING and return_string:
+            yield token_name[1:-1]
+            return_string = False
         if token_type == tokenize.NAME:
             yield token_name
 
@@ -52,7 +59,8 @@ def reintroduce_missing_values(design_matrix: pd.DataFrame, missing_pattern: pd.
     design_matrix[missing_pattern] = np.nan
 
 
-def get_design_matrix_column_name_matching_data_column_name(design_matrix, data, data_column_name):
+def get_design_matrix_column_name_matching_data_column_name(design_matrix: pd.DataFrame, data: pd.DataFrame,
+                                                            data_column_name: str) -> Optional[str]:
     for term, term_slice in design_matrix.design_info.term_slices.items():
 
         num_columns = term_slice.stop - term_slice.start

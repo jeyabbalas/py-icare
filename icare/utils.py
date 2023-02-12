@@ -216,9 +216,20 @@ def read_file_to_dataframe(file: Union[str, pathlib.Path]) -> pd.DataFrame:
 
     dtype = dict()
     for variable, value in zip(header, first_row):
-        if value.startswith('"') and value.endswith('"'):
+        if (value.startswith('"') or value.startswith("'")) and \
+                (value.endswith('"') or value.endswith("'")):
             dtype[variable] = object
 
+    df = pd.read_csv(file, dtype=dtype)
+
+    if "id" in df.columns:
+        df = df.set_index("id")
+
+    return df
+
+
+def read_file_to_dataframe_with_dtype(file: Union[str, pathlib.Path],
+                                      dtype: Union[dict, pd.Series, np.dtype]) -> pd.DataFrame:
     df = pd.read_csv(file, dtype=dtype)
 
     if "id" in df.columns:
