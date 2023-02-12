@@ -25,21 +25,20 @@ class AbsoluteRiskModel:
     baseline_hazard_function: Dict[int, float]
     competing_incidence_rates_function: Dict[int, float]
 
-    def __init__(
-            self,
-            apply_age_start: Union[int, List[int]],
-            apply_age_interval_length: Union[int, List[int]],
-            disease_incidence_rates_path: Union[str, pathlib.Path],
-            formula_path: Union[str, pathlib.Path, None],
-            snp_info_path: Union[str, pathlib.Path, None],
-            log_relative_risk_path: Union[str, pathlib.Path, None],
-            reference_dataset_path: Union[str, pathlib.Path, None],
-            model_reference_dataset_weights_variable_name: Optional[str],
-            competing_incidence_rates_path: Union[str, pathlib.Path, None],
-            model_family_history_variable_name: str,
-            num_imputations: int,
-            covariate_profile_path: Union[str, pathlib.Path, None],
-            snp_profile_path: Union[str, pathlib.Path, None]) -> None:
+    def __init__(self,
+                 apply_age_start: Union[int, List[int]],
+                 apply_age_interval_length: Union[int, List[int]],
+                 disease_incidence_rates_path: Union[str, pathlib.Path],
+                 formula_path: Union[str, pathlib.Path, None],
+                 snp_info_path: Union[str, pathlib.Path, None],
+                 log_relative_risk_path: Union[str, pathlib.Path, None],
+                 reference_dataset_path: Union[str, pathlib.Path, None],
+                 model_reference_dataset_weights_variable_name: Optional[str],
+                 competing_incidence_rates_path: Union[str, pathlib.Path, None],
+                 model_family_history_variable_name: str,
+                 num_imputations: int,
+                 covariate_profile_path: Union[str, pathlib.Path, None],
+                 snp_profile_path: Union[str, pathlib.Path, None]) -> None:
         check_errors.check_age_interval_types(apply_age_start, apply_age_interval_length)
         self.age_start, self.age_interval_length = apply_age_start, apply_age_interval_length
 
@@ -74,3 +73,15 @@ class AbsoluteRiskModel:
                 raise ValueError("ERROR: Since you did not provide any covariate model parameters, it is assumed"
                                  " that you are fitting a SNP-only model, and thus you must provide relevant data"
                                  " to the 'model_snp_info' parameter.")
+
+    def _set_z_profile(self) -> None:
+        if self.covariate_model is not None and self.snp_model is not None:
+            check_errors.check_profiles(self.covariate_model.z_profile, self.snp_model.z_profile)
+            self.z_profile = pd.concat([self.covariate_model.z_profile, self.snp_model.z_profile], axis=1)
+        elif self.covariate_model is not None:
+            self.z_profile = self.covariate_model.z_profile
+        elif self.snp_model is not None:
+            self.z_profile = self.snp_model.z_profile
+        else:
+            raise ValueError("ERROR: No query profiles were set. Please pass inputs for arguments "
+                             "'apply_snp_profile' and/or 'apply_covariate_profile'.")

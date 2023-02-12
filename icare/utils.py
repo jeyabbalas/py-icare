@@ -1,6 +1,6 @@
 import json
 import pathlib
-from typing import Union, List, Optional, Tuple
+from typing import Union, List, Optional, Tuple, Type
 
 import numpy as np
 import pandas as pd
@@ -228,7 +228,9 @@ def read_file_to_dataframe(file: Union[str, pathlib.Path]) -> pd.DataFrame:
     return df
 
 
-def read_file_to_dataframe_given_dtype(file: Union[str, pathlib.Path], dtype: Union[dict, np.dtype]) -> pd.DataFrame:
+def read_file_to_dataframe_given_dtype(
+        file: Union[str, pathlib.Path],
+        dtype: Union[dict, Type[float], Type[int], Type[str], Type[object]]) -> pd.DataFrame:
     header = pd.read_csv(file, nrows=1).columns
     if "id" in header:
         if isinstance(dtype, dict) and "id" not in dtype:
@@ -266,20 +268,6 @@ def configure_snp_and_covariates_model(
         apply_snp_profile: Union[str, pathlib.Path, None],
         model_family_history_variable_name: Optional[str],
         config: dict) -> None:
-    config["snp_model"] = dict()
-
-    if apply_snp_profile is not None:
-        config["snp_model"]["profile"] = read_file_to_dataframe(apply_snp_profile)
-        check_errors.check_snp_profile(config["snp_model"]["profile"], config["covariate_model"]["profile"],
-                                       config["snp_model"]["snp_names"])
-    else:
-        num_instances_imputed = config["covariate_model"]["profile"].shape[0]
-        config["snp_model"]["profile"] = pd.DataFrame(
-            data=np.full((num_instances_imputed, config["snp_model"]["snp_names"].shape[0]), np.nan)
-        )
-        print(f"\nNote: You included 'model_snp_info' but did not provide an 'apply_snp_profile'. "
-              f"iCARE will impute SNPs for {num_instances_imputed} individuals, the same number of"
-              f" instances as the supplied 'apply_covariate_profile'.\n")
 
     if model_family_history_variable_name is not None:
         check_errors.check_family_history(

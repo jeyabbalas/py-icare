@@ -56,8 +56,7 @@ class CovariateModel:
 
     def _set_population_distribution(self, formula: str, reference_dataset: pd.DataFrame) -> None:
         check_errors.check_covariate_reference_dataset(reference_dataset)
-        population_distribution = design_matrix.build_design_matrix(formula, reference_dataset)
-        self.population_distribution = population_distribution
+        self.population_distribution = design_matrix.build_design_matrix(formula, reference_dataset)
 
     def _set_beta_estimates(self, log_relative_risk: dict) -> None:
         check_errors.check_covariate_log_relative_risk(log_relative_risk, self.population_distribution)

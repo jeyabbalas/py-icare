@@ -1,5 +1,5 @@
 import tokenize
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 import pandas as pd
@@ -60,26 +60,29 @@ def reintroduce_missing_values(design_matrix: pd.DataFrame, missing_pattern: pd.
     design_matrix[missing_pattern] = np.nan
 
 
-def get_design_matrix_column_name_matching_data_column_name(design_matrix: pd.DataFrame, data: pd.DataFrame,
-                                                            data_column_name: str) -> Optional[str]:
-    for term, term_slice in design_matrix.design_info.term_slices.items():
+def get_design_matrix_column_name_matching_target_column_name(design_matrix: pd.DataFrame,
+                                                              target_column_name: str) -> Optional[str]:
+    all_data_columns = design_matrix.design_info.original_column_names
 
+    for term, term_slice in design_matrix.design_info.term_slices.items():
         num_columns = term_slice.stop - term_slice.start
         if num_columns > 1 or len(term.factors) > 1:
             continue
 
         for factor in term.factors:
-            data_columns_in_factor = [token for token in get_python_name_tokens(factor.name()) if token in data.columns]
+            data_columns_in_factor = [token for token in get_python_name_tokens(factor.name()) if
+                                      token in all_data_columns]
             if len(data_columns_in_factor) > 1:
                 continue
 
-            if data_column_name in data_columns_in_factor:
+            if target_column_name in data_columns_in_factor:
                 return design_matrix.columns[term_slice][0]
     return None
 
 
 def build_design_matrix(formula: str, dataset: pd.DataFrame) -> pd.DataFrame:
     design_matrix = dmatrix(formula, dataset, return_type="dataframe")
+    design_matrix.design_info.original_column_names = list(dataset.columns)
 
     if "Intercept" in design_matrix.columns:
         design_matrix.drop("Intercept", axis=1, inplace=True)

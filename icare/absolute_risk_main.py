@@ -84,10 +84,6 @@ def compute_absolute_risk(
         if handle_snps:
             covariate_stack5 = None
     else:
-        apply_age_start, apply_age_interval_length = check_errors.check_age_lengths(
-            apply_age_start, apply_age_interval_length,
-            apply_snp_profile, "apply_snp_profile"
-        )
 
         if handle_snps:
             pop_dist_mat = utils.sim_snps(

@@ -4,7 +4,7 @@ from typing import List, Union, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from icare import utils, check_errors
+from icare import utils, check_errors, design_matrix
 from icare.covariate_model import CovariateModel
 
 
@@ -25,7 +25,7 @@ def set_snp_profile(profile_path: Union[str, pathlib.Path, None], age_start: Uni
                     snp_names: List[str], covariate_model: Optional[CovariateModel],
                     num_samples_imputed: int) -> pd.DataFrame:
     if profile_path is not None:
-        profile = utils.read_file_to_dataframe_given_dtype(profile_path, dtype=np.float64)
+        profile = utils.read_file_to_dataframe_given_dtype(profile_path, dtype=float)
         profile = profile[snp_names]
         check_errors.check_snp_profile(profile, snp_names)
         if covariate_model is not None:
@@ -56,6 +56,43 @@ def set_snp_profile(profile_path: Union[str, pathlib.Path, None], age_start: Uni
         return create_empty_snp_profile(num_samples, snp_names)
 
 
+class FamilyHistory:
+    """ Data structure to contain family history information. """
+    population: np.ndarray
+    profile: np.ndarray
+    attenuate: bool
+
+    def __init__(self, covariate_model: Optional[CovariateModel], family_history_variable_name: Optional[str],
+                 profile: pd.DataFrame, snp_names: List[str], num_samples_imputed: int) -> None:
+        if covariate_model is None:
+            self.population = np.repeat(0, num_samples_imputed)
+            self.profile = np.repeat(0, len(profile))
+            self.attenuate = False
+
+            print("\nNote: You did not provide a 'model_family_history_variable_name', therefore "
+                  "the model will not adjust the SNP imputations for family history.\n")
+        else:
+            if family_history_variable_name is None:
+                self.population = np.repeat(0, len(covariate_model.population_distribution))
+                self.profile = np.repeat(0, len(profile))
+                self.attenuate = False
+
+                print("\nNote: You did not provide a 'model_family_history_variable_name', therefore "
+                      "the model will not adjust the SNP imputations for family history.\n")
+            else:
+                check_errors.check_family_history_variable_name_type(family_history_variable_name)
+                family_history_variable_name = design_matrix.get_design_matrix_column_name_matching_target_column_name(
+                    covariate_model.population_distribution, family_history_variable_name
+                )
+                check_errors.check_family_history_variable(
+                    family_history_variable_name, covariate_model.z_profile, covariate_model.population_distribution
+                )
+
+                self.population = covariate_model.population_distribution[family_history_variable_name].values
+                self.profile = covariate_model.z_profile[family_history_variable_name].values
+                self.attenuate = True
+
+
 class SnpModel:
     """
     iCARE's special option for specifying a SNP model without the need to provide a
@@ -67,17 +104,17 @@ class SnpModel:
     z_profile: pd.DataFrame
     population_distribution: pd.DataFrame
     population_weights: np.ndarray
+    family_history: FamilyHistory
 
     NUM_SAMPLES_IMPUTED: int = 10_000
 
-    def __init__(
-            self,
-            info_path: Union[str, pathlib.Path, None],
-            profile_path: Union[str, pathlib.Path, None],
-            family_history_variable_name: Optional[str],
-            age_start: Union[int, List[int]],
-            age_interval_length: Union[int, List[int]],
-            covariate_model: Optional[CovariateModel]) -> None:
+    def __init__(self,
+                 info_path: Union[str, pathlib.Path, None],
+                 profile_path: Union[str, pathlib.Path, None],
+                 family_history_variable_name: Optional[str],
+                 age_start: Union[int, List[int]],
+                 age_interval_length: Union[int, List[int]],
+                 covariate_model: Optional[CovariateModel]) -> None:
         snp_names, betas, frequencies = extract_snp_info(info_path)
         profile = set_snp_profile(
             profile_path, age_start, snp_names, covariate_model, self.NUM_SAMPLES_IMPUTED
@@ -86,11 +123,5 @@ class SnpModel:
         self.age_start, self.age_interval_length = utils.set_age_intervals(
             age_start, age_interval_length, profile, "apply_snp_profile"
         )
-
-
-        family_history = dict()
-        family_history["population"] = np.repeat(0, self.NUM_SAMPLES_IMPUTED)
-        family_history["profile"] = np.repeat(0, len(profile))
-        family_history["attenuate"] = False
-        print("\nNote: You did not provide a 'model_family_history_variable_name', therefore "
-              "the model will not adjust the SNP imputations for family history.\n")
+        self.family_history = FamilyHistory(covariate_model, family_history_variable_name, profile, snp_names,
+                                            self.NUM_SAMPLES_IMPUTED)

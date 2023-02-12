@@ -4,28 +4,6 @@ import numpy as np
 import pandas as pd
 
 
-def check_age_lengths(apply_age_start, apply_age_interval_length, match, match_name):
-    if isinstance(apply_age_start, int):
-        apply_age_start = np.full((match.shape[0],), apply_age_start)
-
-    if isinstance(apply_age_interval_length, int):
-        apply_age_interval_length = np.full((match.shape[0],), apply_age_interval_length)
-
-    if apply_age_start.shape[0] != apply_age_interval_length.shape[0]:
-        raise ValueError("ERROR: 'apply_age_start and 'apply_age_interval_length' must have the same length.")
-
-    if apply_age_start.shape[0] != match.shape[0]:
-        raise ValueError(f"ERROR: 'apply_age_start' and number of rows in '{match_name}' must match.")
-
-    if (sum(np.isnan(apply_age_start)) + sum(np.isnan(apply_age_interval_length))) > 0:
-        raise ValueError("ERROR: 'apply_age_start' and 'apply_age_interval_length' must not contain missing values.")
-
-    if ((sum(apply_age_start < 0)) + sum(apply_age_interval_length < 0)) > 0:
-        raise ValueError("ERROR: 'apply_age_start' and 'apply_age_interval_length' must contain positive values.")
-
-    return apply_age_start, apply_age_interval_length
-
-
 def check_snp_info(model_snp_info: pd.DataFrame) -> None:
     if any([x not in model_snp_info.columns for x in ["snp_name", "snp_odds_ratio", "snp_freq"]]):
         raise ValueError("ERROR: 'model_snp_info' must have columns 'snp_name', 'snp_odds_ratio', and 'snp_freq'.")
@@ -146,6 +124,8 @@ def check_snp_profile(apply_snp_profile: pd.DataFrame, snp_names: List[str]) -> 
 
 def check_profiles(apply_snp_profile: pd.DataFrame, apply_covariate_profile: pd.DataFrame) -> None:
     if len(apply_snp_profile) != len(apply_covariate_profile):
+        print("Number of rows in 'apply_snp_profile':", len(apply_snp_profile))
+        print("Number of rows in 'apply_covariate_profile':", len(apply_covariate_profile))
         raise ValueError("ERROR: The data in 'apply_snp_profile' and 'apply_covariate_profile' inputs must have "
                          "the same number of rows.")
 
@@ -243,4 +223,43 @@ def check_covariate_profile_against_reference_population(profile: pd.DataFrame,
         print(f"'apply_covariate_profile' design matrix columns: {profile.columns}")
         raise ValueError("ERROR: The design matrix, resulting from the Patsy formula in 'model_covariate_formula'"
                          ", for 'apply_covariate_profile' do not match the design matrix resulting from the "
+                         "'model_reference_dataset' input.")
+
+
+def check_family_history_variable_name_type(family_history_variable_name: str) -> None:
+    if isinstance(family_history_variable_name, str):
+        raise ValueError("ERROR: The argument 'family_history_variable_name' must be a string corresponding to "
+                         "the variable name of the binary family history variable in the 'model_reference_dataset'.")
+
+
+def check_family_history_variable(family_history_variable_name: str, z_profile: pd.DataFrame,
+                                  population_distribution: pd.DataFrame) -> None:
+    if family_history_variable_name not in z_profile.columns:
+        print(
+            f"'model_family_history_variable_name' inferred from 'model_covariate_formula': "
+            f"{family_history_variable_name}")
+        print(f"'apply_covariate_profile' design matrix columns: {z_profile.columns}")
+        raise ValueError("ERROR: The 'model_family_history_variable_name' input must be a column in the "
+                         "'apply_covariate_profile' input.")
+
+    if family_history_variable_name not in population_distribution.columns:
+        print(
+            f"'model_family_history_variable_name' inferred from 'model_covariate_formula': "
+            f"{family_history_variable_name}")
+        print(f"'model_reference_dataset' design matrix columns: {population_distribution.columns}")
+        raise ValueError("ERROR: The 'model_family_history_variable_name' input must be a column in the "
+                         "'model_reference_dataset' input.")
+
+    profile_fh_unique = z_profile[family_history_variable_name].dropna().unique().astype(int)
+    if profile_fh_unique.shape[0] != 2 or any([x not in profile_fh_unique for x in [0, 1]]):
+        print(f"Observed values in 'apply_covariate_profile' for 'model_family_history_variable_name': "
+              f"{profile_fh_unique}")
+        raise ValueError("ERROR: The 'model_family_history_variable_name' input must be a binary variable in the "
+                         "'apply_covariate_profile' input.")
+
+    reference_fh_unique = population_distribution[family_history_variable_name].unique().astype(int)
+    if reference_fh_unique.shape[0] != 2 or any([x not in reference_fh_unique for x in [0, 1]]):
+        print(f"Observed values in 'model_reference_dataset' for 'model_family_history_variable_name': "
+              f"{reference_fh_unique}")
+        raise ValueError("ERROR: The 'model_family_history_variable_name' input must be a binary variable in the "
                          "'model_reference_dataset' input.")
