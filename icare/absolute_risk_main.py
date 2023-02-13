@@ -69,8 +69,7 @@ def compute_absolute_risk(apply_age_start: Union[int, List[int]],
         apply_age_start, apply_age_interval_length, model_disease_incidence_rates, model_covariate_formula,
         model_snp_info, model_log_relative_risk, model_reference_dataset, model_reference_dataset_weights_variable_name,
         model_competing_incidence_rates, model_family_history_variable_name, num_imputations,
-        apply_covariate_profile, apply_snp_profile
-    )
+        apply_covariate_profile, apply_snp_profile)
 
     lambda_vals, model_competing_incidence_rates = check_errors.check_rates(
         model_competing_incidence_rates, model_disease_incidence_rates,

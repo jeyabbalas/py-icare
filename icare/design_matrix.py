@@ -60,8 +60,8 @@ def reintroduce_missing_values(design_matrix: pd.DataFrame, missing_pattern: pd.
     design_matrix[missing_pattern] = np.nan
 
 
-def get_design_matrix_column_name_matching_target_column_name(design_matrix: pd.DataFrame,
-                                                              target_column_name: str) -> Optional[str]:
+def get_design_matrix_column_name_from_data_column_name(design_matrix: pd.DataFrame,
+                                                        data_column_name: str) -> Optional[str]:
     all_data_columns = design_matrix.design_info.original_column_names
 
     for term, term_slice in design_matrix.design_info.term_slices.items():
@@ -75,7 +75,7 @@ def get_design_matrix_column_name_matching_target_column_name(design_matrix: pd.
             if len(data_columns_in_factor) > 1:
                 continue
 
-            if target_column_name in data_columns_in_factor:
+            if data_column_name in data_columns_in_factor:
                 return design_matrix.columns[term_slice][0]
     return None
 

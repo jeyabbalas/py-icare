@@ -8,36 +8,6 @@ import pandas as pd
 from icare import check_errors
 
 
-def sim_snps(snp_betas, snp_freqs, fh_status):
-    snps = np.full((fh_status.shape[0], snp_freqs.shape[0]), np.nan)
-    prob012_fh_no = np.column_stack(
-        ((1.0 - snp_freqs) ** 2,
-         2 * snp_freqs * (1 - snp_freqs),
-         snp_freqs ** 2)
-    )
-    beta_mat = np.repeat(snp_betas, 3).reshape(-1, 3)
-    top = np.exp(beta_mat * (np.tile(np.array([0., 1., 2.]), snp_betas.shape[0]).reshape(-1, 3) / 2.0)) * prob012_fh_no
-    bottom = np.repeat(np.sum(top, axis=1), 3).reshape(-1, 3)
-    prob012_fh_yes = top / bottom
-
-    fh_no = np.where(fh_status == 0)
-    fh_yes = np.where(fh_status == 1)
-
-    vals = np.random.default_rng() \
-        .uniform(size=fh_status.shape[0] * snp_betas.shape[0]) \
-        .reshape(fh_status.shape[0], snp_betas.shape[0])
-
-    if fh_no[0].shape[0]:
-        snps[fh_no] = np.array(vals[fh_no] > prob012_fh_no[:, 0], dtype=int) + \
-                      np.array(vals[fh_no] > np.sum(prob012_fh_no[:, :2], axis=1), dtype=int)
-
-    if fh_yes[0].shape[0]:
-        snps[fh_yes] = np.array(vals[fh_yes] > prob012_fh_yes[:, 0], dtype=int) + \
-                       np.array(vals[fh_yes] > np.sum(prob012_fh_yes[:, :2], axis=1), dtype=int)
-
-    return snps
-
-
 def survival_given_x(lambda_0, beta_est, pop_dist_mat):
     # produces a matrix with Nobs x Ntimes
     # cumulative up to but not including current time
@@ -201,44 +171,17 @@ def read_file_to_dataframe_given_dtype(
 
 
 def set_age_intervals(age_start: Union[int, List[int]], age_interval_length: Union[int, List[int]],
-                      profile: pd.DataFrame, profile_name: str) -> Tuple[List[int], List[int]]:
+                      num_samples_profile: int, profile_name: str) -> Tuple[List[int], List[int]]:
     if isinstance(age_start, int):
-        age_start = [age_start] * len(profile)
+        age_start = [age_start] * num_samples_profile
 
     if isinstance(age_interval_length, int):
-        age_interval_length = [age_interval_length] * len(profile)
+        age_interval_length = [age_interval_length] * num_samples_profile
 
-    if len(age_start) != len(profile) or len(age_interval_length) != len(profile):
+    if len(age_start) != num_samples_profile or len(age_interval_length) != num_samples_profile:
         raise ValueError(f"ERROR: the number of values in 'apply_age_start' and 'apply_age_interval_length', "
                          f"and the number of rows in '{profile_name}' must match.")
 
     check_errors.check_age_intervals(age_start, age_interval_length)
 
     return age_start, age_interval_length
-
-
-def configure_snp_and_covariates_model(
-        model_snp_info: Union[str, pathlib.Path, None],
-        apply_snp_profile: Union[str, pathlib.Path, None],
-        model_family_history_variable_name: Optional[str],
-        config: dict) -> None:
-
-    if model_family_history_variable_name is not None:
-        check_errors.check_family_history(
-            model_family_history_variable_name, config["covariate_model"]["reference_dataset"],
-            config["covariate_model"]["profile"])
-        config["snp_model"]["family_history"] = dict()
-        config["snp_model"]["family_history"]["population"] = \
-            config["covariate_model"]["reference_dataset"][model_family_history_variable_name].values
-        config["snp_model"]["family_history"]["profile"] = \
-            config["covariate_model"]["profile"][model_family_history_variable_name].values
-        config["snp_model"]["family_history"]["attenuate"] = True
-    else:
-        config["snp_model"]["family_history"] = dict()
-        config["snp_model"]["family_history"]["population"] = np.repeat(
-            0, len(config["covariate_model"]["reference_dataset"]))
-        config["snp_model"]["family_history"]["profile"] = np.repeat(
-            0, len(config["covariate_model"]["profile"]))
-        config["snp_model"]["family_history"]["attenuate"] = False
-        print("\nNote: You did not provide a 'model_family_history_variable_name', therefore "
-              "the model will not adjust the SNP imputations for family history.\n")

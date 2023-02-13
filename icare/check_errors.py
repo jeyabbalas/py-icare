@@ -232,25 +232,23 @@ def check_family_history_variable_name_type(family_history_variable_name: str) -
                          "the variable name of the binary family history variable in the 'model_reference_dataset'.")
 
 
-def check_family_history_variable(family_history_variable_name: str, z_profile: pd.DataFrame,
+def check_family_history_variable(family_history_variable_name: str, profile: pd.DataFrame,
                                   population_distribution: pd.DataFrame) -> None:
-    if family_history_variable_name not in z_profile.columns:
-        print(
-            f"'model_family_history_variable_name' inferred from 'model_covariate_formula': "
-            f"{family_history_variable_name}")
-        print(f"'apply_covariate_profile' design matrix columns: {z_profile.columns}")
+    if family_history_variable_name not in profile.columns:
+        print(f"'model_family_history_variable_name' inferred from 'model_covariate_formula': "
+              f"{family_history_variable_name}")
+        print(f"'apply_covariate_profile' design matrix columns: {profile.columns}")
         raise ValueError("ERROR: The 'model_family_history_variable_name' input must be a column in the "
-                         "'apply_covariate_profile' input.")
+                         "design matrix of the 'apply_covariate_profile' input data.")
 
     if family_history_variable_name not in population_distribution.columns:
-        print(
-            f"'model_family_history_variable_name' inferred from 'model_covariate_formula': "
-            f"{family_history_variable_name}")
+        print(f"'model_family_history_variable_name' inferred from 'model_covariate_formula': "
+              f"{family_history_variable_name}")
         print(f"'model_reference_dataset' design matrix columns: {population_distribution.columns}")
         raise ValueError("ERROR: The 'model_family_history_variable_name' input must be a column in the "
-                         "'model_reference_dataset' input.")
+                         "design matrix of the 'model_reference_dataset' input data.")
 
-    profile_fh_unique = z_profile[family_history_variable_name].dropna().unique().astype(int)
+    profile_fh_unique = profile[family_history_variable_name].dropna().unique().astype(int)
     if profile_fh_unique.shape[0] != 2 or any([x not in profile_fh_unique for x in [0, 1]]):
         print(f"Observed values in 'apply_covariate_profile' for 'model_family_history_variable_name': "
               f"{profile_fh_unique}")

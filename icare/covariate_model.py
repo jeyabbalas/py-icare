@@ -36,15 +36,15 @@ class CovariateModel:
         formula = utils.read_file_to_string(formula_path)
         log_relative_risk = utils.read_file_to_dict(log_relative_risk_path)
         reference_dataset = utils.read_file_to_dataframe(reference_dataset_path)
-        profile = utils.read_file_to_dataframe_given_dtype(profile_path, dtype=reference_dataset.dtypes.to_dict())
 
-        self.age_start, self.age_interval_length = utils.set_age_intervals(
-            age_start, age_interval_length, profile, "apply_covariate_profile"
-        )
         self._set_population_distribution(formula, reference_dataset)
         self._set_population_weights(reference_dataset_weights)
         self._set_beta_estimates(log_relative_risk)
+
+        profile = utils.read_file_to_dataframe_given_dtype(profile_path, dtype=reference_dataset.dtypes.to_dict())
         self._set_z_profile(formula, profile, reference_dataset)
+        self.age_start, self.age_interval_length = utils.set_age_intervals(
+            age_start, age_interval_length, len(self.z_profile), "apply_covariate_profile")
 
     def _set_population_distribution(self, formula: str, reference_dataset: pd.DataFrame) -> None:
         check_errors.check_covariate_reference_dataset(reference_dataset)
