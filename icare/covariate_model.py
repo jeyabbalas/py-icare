@@ -42,21 +42,20 @@ class CovariateModel:
             age_start, age_interval_length, profile, "apply_covariate_profile"
         )
         self._set_population_distribution(formula, reference_dataset)
-        self._set_population_weights(reference_dataset_weights, reference_dataset)
+        self._set_population_weights(reference_dataset_weights)
         self._set_beta_estimates(log_relative_risk)
         self._set_z_profile(formula, profile, reference_dataset)
-
-    def _set_population_weights(self, reference_dataset_weights: Optional[List[float]],
-                                reference_dataset: pd.DataFrame) -> None:
-        if reference_dataset_weights is None:
-            self.population_weights = np.ones(len(reference_dataset)) / len(reference_dataset)
-        else:
-            check_errors.check_population_weights(reference_dataset_weights, reference_dataset)
-            self.population_weights = np.array(reference_dataset_weights) / sum(reference_dataset_weights)
 
     def _set_population_distribution(self, formula: str, reference_dataset: pd.DataFrame) -> None:
         check_errors.check_covariate_reference_dataset(reference_dataset)
         self.population_distribution = design_matrix.build_design_matrix(formula, reference_dataset)
+
+    def _set_population_weights(self, reference_dataset_weights: Optional[List[float]]) -> None:
+        if reference_dataset_weights is None:
+            self.population_weights = np.ones(len(self.population_distribution)) / len(self.population_distribution)
+        else:
+            check_errors.check_population_weights(reference_dataset_weights, self.population_distribution)
+            self.population_weights = np.array(reference_dataset_weights) / sum(reference_dataset_weights)
 
     def _set_beta_estimates(self, log_relative_risk: dict) -> None:
         check_errors.check_covariate_log_relative_risk(log_relative_risk, self.population_distribution)

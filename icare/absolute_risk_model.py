@@ -60,19 +60,21 @@ class AbsoluteRiskModel:
         if instantiate_special_snp_model:
             self.snp_model = SnpModel(
                 snp_info_path, snp_profile_path, model_family_history_variable_name, self.age_start,
-                self.age_interval_length, self.covariate_model
+                self.age_interval_length, self.num_imputations, self.covariate_model
             )
 
             if self.covariate_model is None:
                 self.age_start = self.snp_model.age_start
                 self.age_interval_length = self.snp_model.age_interval_length
             check_errors.check_profiles(self.covariate_model.z_profile, self.snp_model.z_profile)
-            # merge everything here (check before merging)
         else:
             if self.covariate_model is None:
                 raise ValueError("ERROR: Since you did not provide any covariate model parameters, it is assumed"
                                  " that you are fitting a SNP-only model, and thus you must provide relevant data"
                                  " to the 'model_snp_info' parameter.")
+
+        self._set_z_profile()
+        # TODO: when merging reference populations, repeat covariate population num_imputations times before merging.
 
     def _set_z_profile(self) -> None:
         if self.covariate_model is not None and self.snp_model is not None:

@@ -12,23 +12,22 @@ def hello_world(name="world"):
     return f"Hello, {name}!"
 
 
-def compute_absolute_risk(
-        apply_age_start: Union[int, List[int]],
-        apply_age_interval_length: Union[int, List[int]],
-        model_disease_incidence_rates: Union[str, pathlib.Path],
-        model_covariate_formula: Union[str, pathlib.Path, None] = None,
-        model_snp_info: Union[str, pathlib.Path, None] = None,
-        model_log_relative_risk: Union[str, pathlib.Path, None] = None,
-        model_reference_dataset: Union[str, pathlib.Path, None] = None,
-        model_reference_dataset_weights_variable_name: Optional[str] = None,
-        model_competing_incidence_rates: Union[str, pathlib.Path, None] = None,
-        model_family_history_variable_name: Optional[str] = None,
-        num_imputations: int = 5,
-        apply_covariate_profile: Union[str, pathlib.Path, None] = None,
-        apply_snp_profile: Union[str, pathlib.Path, None] = None,
-        use_c_code: bool = False,
-        return_linear_predictors: bool = False,
-        return_reference_risks: bool = False):
+def compute_absolute_risk(apply_age_start: Union[int, List[int]],
+                          apply_age_interval_length: Union[int, List[int]],
+                          model_disease_incidence_rates: Union[str, pathlib.Path],
+                          model_covariate_formula: Union[str, pathlib.Path, None] = None,
+                          model_snp_info: Union[str, pathlib.Path, None] = None,
+                          model_log_relative_risk: Union[str, pathlib.Path, None] = None,
+                          model_reference_dataset: Union[str, pathlib.Path, None] = None,
+                          model_reference_dataset_weights_variable_name: Optional[str] = None,
+                          model_competing_incidence_rates: Union[str, pathlib.Path, None] = None,
+                          model_family_history_variable_name: Optional[str] = None,
+                          num_imputations: int = 5,
+                          apply_covariate_profile: Union[str, pathlib.Path, None] = None,
+                          apply_snp_profile: Union[str, pathlib.Path, None] = None,
+                          use_c_code: bool = False,
+                          return_linear_predictors: bool = False,
+                          return_reference_risks: bool = False) -> dict:
     """
     This function is used to build absolute risk models and apply them to estimate absolute risks.
 
@@ -72,28 +71,6 @@ def compute_absolute_risk(
         model_competing_incidence_rates, model_family_history_variable_name, num_imputations,
         apply_covariate_profile, apply_snp_profile
     )
-
-    if handle_snps:
-        attenuate_fh, fh_pop, apply_snp_profile = utils.process_snp_info(
-            model_includes_covariates, apply_snp_profile,
-            model_family_history_variable_name, apply_covariate_profile,
-            model_reference_dataset, model_snp_info
-        )
-
-    if model_includes_covariates:
-        if handle_snps:
-            covariate_stack5 = None
-    else:
-
-        if handle_snps:
-            pop_dist_mat = utils.sim_snps(
-                model_snp_info["snp_betas"].values,
-                model_snp_info["snp_freq"].values,
-                np.tile(fh_pop, num_imputations)
-            )
-            pop_weights = np.full((pop_dist_mat.shape[0],), 1.0 / pop_dist_mat.shape[0])
-            beta_est = model_snp_info["snp_betas"].values
-            z_new = apply_snp_profile.values.T
 
     lambda_vals, model_competing_incidence_rates = check_errors.check_rates(
         model_competing_incidence_rates, model_disease_incidence_rates,
