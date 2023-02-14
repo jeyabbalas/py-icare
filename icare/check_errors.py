@@ -122,11 +122,19 @@ def check_snp_profile(apply_snp_profile: pd.DataFrame, snp_names: List[str]) -> 
                          "'model_snp_info' input.")
 
 
-def check_profiles(apply_snp_profile: pd.DataFrame, apply_covariate_profile: pd.DataFrame) -> None:
-    if len(apply_snp_profile) != len(apply_covariate_profile):
-        print("Number of rows in 'apply_snp_profile':", len(apply_snp_profile))
-        print("Number of rows in 'apply_covariate_profile':", len(apply_covariate_profile))
-        raise ValueError("ERROR: The data in 'apply_snp_profile' and 'apply_covariate_profile' inputs must have "
+def check_reference_populations(covariate_population: pd.DataFrame, snp_population: pd.DataFrame) -> None:
+    if len(covariate_population) != len(snp_population):
+        print("Number of rows in 'model_reference_dataset':", len(covariate_population))
+        print("Number of rows in the simulated SNP dataset:", len(snp_population))
+        raise ValueError("ERROR: The data in the 'model_reference_dataset' and the simulated SNP dataset must have "
+                         "the same number of rows.")
+
+
+def check_profiles(covariate_profile: pd.DataFrame, snp_profile: pd.DataFrame) -> None:
+    if len(covariate_profile) != len(snp_profile):
+        print("Number of rows in 'apply_covariate_profile':", len(covariate_profile))
+        print("Number of rows in 'apply_snp_profile':", len(snp_profile))
+        raise ValueError("ERROR: The data in 'apply_covariate_profile' and 'apply_snp_profile' inputs must have "
                          "the same number of rows.")
 
 
@@ -261,3 +269,18 @@ def check_family_history_variable(family_history_variable_name: str, profile: pd
               f"{reference_fh_unique}")
         raise ValueError("ERROR: The 'model_family_history_variable_name' input must be a binary variable in the "
                          "'model_reference_dataset' input.")
+
+
+def check_population_weights_are_equal(covariate_weights: np.ndarray, snp_weights: np.ndarray) -> None:
+    if not np.allclose(covariate_weights, snp_weights):
+        print(f"Population weights inferred from the 'model_reference_dataset' input: {covariate_weights}")
+        print(f"Population weights inferred from the 'model_snp_dataset' input: {snp_weights}")
+        raise ValueError("ERROR: The population weights inferred from the 'model_reference_dataset' input must be "
+                         "the same as the population weights inferred from the 'model_snp_dataset' input.")
+
+
+def check_covariate_reference_dataset_weights_name(reference_dataset_weights_name: str,
+                                                   reference_dataset: pd.DataFrame) -> None:
+    if reference_dataset_weights_name not in reference_dataset.columns:
+        raise ValueError(f"ERROR: The 'model_reference_dataset_weights_name' ({reference_dataset.columns}) input "
+                         f"must be a column in the 'model_reference_dataset' input data.")
