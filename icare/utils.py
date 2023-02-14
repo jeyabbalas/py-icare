@@ -1,6 +1,6 @@
 import json
 import pathlib
-from typing import Union, List, Optional, Tuple, Type
+from typing import Union, List, Tuple, Type
 
 import numpy as np
 import pandas as pd
