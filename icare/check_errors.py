@@ -232,7 +232,7 @@ def check_covariate_profile_against_reference_population(profile: pd.DataFrame,
 
 
 def check_family_history_variable_name_type(family_history_variable_name: str) -> None:
-    if isinstance(family_history_variable_name, str):
+    if not isinstance(family_history_variable_name, str):
         raise ValueError("ERROR: The argument 'family_history_variable_name' must be a string corresponding to "
                          "the variable name of the binary family history variable in the 'model_reference_dataset_path'.")
 
@@ -254,14 +254,14 @@ def check_family_history_variable(family_history_variable_name: str, profile: pd
                          "design matrix of the 'model_reference_dataset_path' input data.")
 
     profile_fh_unique = profile[family_history_variable_name].dropna().unique().astype(int)
-    if profile_fh_unique.shape[0] != 2 or any([x not in profile_fh_unique for x in [0, 1]]):
+    if any([x not in [0, 1] for x in profile_fh_unique]):
         print(f"Observed values in 'apply_covariate_profile_path' for 'model_family_history_variable_name': "
               f"{profile_fh_unique}")
         raise ValueError("ERROR: The 'model_family_history_variable_name' input must be a binary variable in the "
                          "'apply_covariate_profile_path' input.")
 
     reference_fh_unique = population_distribution[family_history_variable_name].unique().astype(int)
-    if reference_fh_unique.shape[0] != 2 or any([x not in reference_fh_unique for x in [0, 1]]):
+    if any([x not in [0, 1] for x in reference_fh_unique]):
         print(f"Observed values in 'model_reference_dataset_path' for 'model_family_history_variable_name': "
               f"{reference_fh_unique}")
         raise ValueError("ERROR: The 'model_family_history_variable_name' input must be a binary variable in the "

@@ -119,6 +119,7 @@ class AbsoluteRiskModel:
         if covariate_model is not None and snp_model is not None:
             check_errors.check_profiles(covariate_model.z_profile, snp_model.z_profile)
             self.z_profile = pd.concat([covariate_model.z_profile, snp_model.z_profile], axis=1)
+            self.z_profile.index = covariate_model.z_profile.index
         elif covariate_model is not None:
             self.z_profile = covariate_model.z_profile
         elif snp_model is not None:

@@ -45,6 +45,12 @@ class FamilyHistory:
                 check_errors.check_family_history_variable_name_type(family_history_variable_name)
                 family_history_variable_name = design_matrix.get_design_matrix_column_name_from_data_column_name(
                     covariate_model.population_distribution, family_history_variable_name)
+
+                if family_history_variable_name is None:
+                    raise ValueError("The 'model_family_history_variable_name' you provided does not exist in the "
+                                     "covariate design matrix. Please provide a valid "
+                                     "'model_family_history_variable_name'.")
+
                 check_errors.check_family_history_variable(
                     family_history_variable_name, covariate_model.z_profile, covariate_model.population_distribution)
 
@@ -140,7 +146,7 @@ class SnpModel:
 
         self._set_population_distribution(covariate_model, snp_names, betas, frequencies, num_imputations)
         self._set_population_weights(covariate_model, num_imputations)
-        self._set_beta_estimates(covariate_model, betas)
+        self._set_beta_estimates(covariate_model, betas, frequencies)
 
     def _set_z_profile(self, profile_path: Union[str, pathlib.Path, None], age_start: Union[int, List[int]],
                        snp_names: List[str], covariate_model: Optional[CovariateModel]) -> None:
@@ -154,6 +160,7 @@ class SnpModel:
                                      f" does not match the number of individuals in the 'apply_covariate_profile'"
                                      f"({len(covariate_model.z_profile)}).")
             self.z_profile = profile
+            return
 
         def create_empty_snp_profile(num_rows: int, columns: List[str]) -> pd.DataFrame:
             return pd.DataFrame(data=np.full((num_rows, len(columns)), np.nan), columns=columns)
