@@ -79,8 +79,8 @@ def check_rates(model_competing_incidence_rates, model_disease_incidence_rates, 
 
     if sum([x not in model_competing_incidence_rates["age"] for
             x in range(np.min(apply_age_start), np.max(apply_age_start + apply_age_interval_length))]) > 0:
-        raise ValueError("ERROR: The 'model_competing_incidence_rates_path' input must have age-specific rates for each "
-                         "integer age covered by the prediction intervals defined by 'apply_age_start' and "
+        raise ValueError("ERROR: The 'model_competing_incidence_rates_path' input must have age-specific rates for "
+                         "each integer age covered by the prediction intervals defined by 'apply_age_start' and "
                          "'apply_age_interval_length'. You must make these inputs consistent with one "
                          "another to proceed.")
 
@@ -126,40 +126,16 @@ def check_reference_populations(covariate_population: pd.DataFrame, snp_populati
     if len(covariate_population) != len(snp_population):
         print("Number of rows in 'model_reference_dataset_path':", len(covariate_population))
         print("Number of rows in the simulated SNP dataset:", len(snp_population))
-        raise ValueError("ERROR: The data in the 'model_reference_dataset_path' and the simulated SNP dataset must have "
-                         "the same number of rows.")
+        raise ValueError("ERROR: The data in the 'model_reference_dataset_path' and the simulated SNP dataset must "
+                         "have the same number of rows.")
 
 
 def check_profiles(covariate_profile: pd.DataFrame, snp_profile: pd.DataFrame) -> None:
     if len(covariate_profile) != len(snp_profile):
         print("Number of rows in 'apply_covariate_profile_path':", len(covariate_profile))
         print("Number of rows in 'apply_snp_profile_path':", len(snp_profile))
-        raise ValueError("ERROR: The data in 'apply_covariate_profile_path' and 'apply_snp_profile_path' inputs must have "
-                         "the same number of rows.")
-
-
-def check_family_history(model_family_history_variable_name: str, model_reference_dataset: pd.DataFrame,
-                         apply_covariate_profile: pd.DataFrame) -> None:
-    if isinstance(model_family_history_variable_name, str):
-        raise ValueError("ERROR: The argument 'model_family_history_variable_name' must be a string.")
-
-    if model_family_history_variable_name not in model_reference_dataset.columns:
-        raise ValueError("ERROR: The 'model_family_history_variable_name' input must be a column in the "
-                         "'model_reference_dataset_path' input.")
-
-    if model_family_history_variable_name not in apply_covariate_profile.columns:
-        raise ValueError("ERROR: The 'model_family_history_variable_name' input must be a column in the "
-                         "'apply_covariate_profile_path' input.")
-
-    reference_fh_unique = model_reference_dataset[model_family_history_variable_name].dropna().unique().astype(int)
-    if reference_fh_unique.shape[0] != 2 or any([x not in reference_fh_unique for x in [0, 1]]):
-        raise ValueError("ERROR: Family history variable ('model_family_history_variable_name') in the "
-                         "'model_reference_dataset_path' input must be a binary variable.")
-
-    profile_fh_unique = apply_covariate_profile[model_family_history_variable_name].dropna().unique().astype(int)
-    if profile_fh_unique.shape[0] != 2 or any([x not in profile_fh_unique for x in [0, 1]]):
-        raise ValueError("ERROR: Family history variable ('model_family_history_variable_name') in the "
-                         "'apply_covariate_profile_path' input must be a binary variable.")
+        raise ValueError("ERROR: The data in 'apply_covariate_profile_path' and 'apply_snp_profile_path' inputs "
+                         "must have the same number of rows.")
 
 
 def check_population_weights(reference_dataset_weights: List[float], reference_dataset: pd.DataFrame) -> None:
