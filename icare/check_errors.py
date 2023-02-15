@@ -90,10 +90,10 @@ def check_rates(model_competing_incidence_rates, model_disease_incidence_rates, 
 def check_age_interval_types(
         age_start: Union[int, List[int]],
         age_interval_length: Union[int, List[int]]) -> None:
-    if not isinstance(age_start, int) or not isinstance(age_start, list):
+    if not isinstance(age_start, int) and not isinstance(age_start, list):
         raise ValueError("ERROR: The argument 'apply_age_start' must be an integer or a list of integers.")
 
-    if not isinstance(age_interval_length, int) or not isinstance(age_interval_length, list):
+    if not isinstance(age_interval_length, int) and not isinstance(age_interval_length, list):
         raise ValueError("ERROR: The argument 'apply_age_interval_length' must be an integer or a list of integers.")
 
     if isinstance(age_start, list):
@@ -234,7 +234,8 @@ def check_covariate_profile_against_reference_population(profile: pd.DataFrame,
 def check_family_history_variable_name_type(family_history_variable_name: str) -> None:
     if not isinstance(family_history_variable_name, str):
         raise ValueError("ERROR: The argument 'family_history_variable_name' must be a string corresponding to "
-                         "the variable name of the binary family history variable in the 'model_reference_dataset_path'.")
+                         "the variable name of the binary family history variable in the "
+                         "'model_reference_dataset_path'.")
 
 
 def check_family_history_variable(family_history_variable_name: str, profile: pd.DataFrame,
