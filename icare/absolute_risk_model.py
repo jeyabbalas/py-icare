@@ -4,9 +4,25 @@ from typing import Union, List, Optional, Dict
 import numpy as np
 import pandas as pd
 
-from icare import check_errors
+from icare import check_errors, utils
 from icare.covariate_model import CovariateModel
 from icare.snp_model import SnpModel
+
+
+def format_rates(rates: pd.DataFrame) -> pd.DataFrame:
+    if len(rates.columns) == 3:
+        age = list(range(rates["start_age"].min(), rates["end_age"].max() + 1))
+        rate = np.zeros(len(age), dtype=float)
+        formatted_rates = pd.DataFrame({"age": age, "rate": rate})
+
+        for _, row in rates.iterrows():
+            ages_within_interval = (formatted_rates["age"] >= row["start_age"]) & \
+                                   (formatted_rates["age"] < row["end_age"])
+            formatted_rates.loc[ages_within_interval, "rate"] = row["rate"] / len(formatted_rates[ages_within_interval])
+
+        return formatted_rates.set_index("age")
+
+    return rates.set_index("age")
 
 
 class AbsoluteRiskModel:
@@ -19,19 +35,19 @@ class AbsoluteRiskModel:
     population_weights: np.ndarray
     num_imputations: int
 
-    baseline_hazard_function: Dict[int, float]
-    competing_incidence_rates_function: Dict[int, float]
+    baseline_hazard: pd.DataFrame
+    competing_incidence_rates: pd.DataFrame
 
     def __init__(self,
                  apply_age_start: Union[int, List[int]],
                  apply_age_interval_length: Union[int, List[int]],
-                 disease_incidence_rates_path: Union[str, pathlib.Path],
+                 age_specific_disease_incidence_rates_path: Union[str, pathlib.Path],
                  formula_path: Union[str, pathlib.Path, None],
                  snp_info_path: Union[str, pathlib.Path, None],
                  log_relative_risk_path: Union[str, pathlib.Path, None],
                  reference_dataset_path: Union[str, pathlib.Path, None],
                  model_reference_dataset_weights_variable_name: Optional[str],
-                 competing_incidence_rates_path: Union[str, pathlib.Path, None],
+                 age_specific_competing_incidence_rates_path: Union[str, pathlib.Path, None],
                  model_family_history_variable_name: str,
                  num_imputations: int,
                  covariate_profile_path: Union[str, pathlib.Path, None],
@@ -75,6 +91,8 @@ class AbsoluteRiskModel:
         self._set_population_weights(covariate_model, snp_model)
         self._set_beta_estimates(covariate_model, snp_model)
         self._set_z_profile(covariate_model, snp_model)
+        self._set_baseline_hazard(age_specific_disease_incidence_rates_path)
+        self._set_competing_incidence_rates(age_specific_competing_incidence_rates_path)
 
     def _set_population_distribution(self, covariate_model: Optional[CovariateModel],
                                      snp_model: Optional[SnpModel]) -> None:
@@ -127,3 +145,25 @@ class AbsoluteRiskModel:
         else:
             raise ValueError("ERROR: No query profiles were set. Please pass inputs for arguments "
                              "'apply_covariate_profile_path' and/or 'apply_snp_profile_path'.")
+
+    def _set_baseline_hazard(self, disease_incidence_rates_path: Union[str, pathlib.Path]) -> None:
+        disease_incidence_rates = utils.read_file_to_dataframe(disease_incidence_rates_path)
+        check_errors.check_rate_format(disease_incidence_rates, "model_disease_incidence_rates_path")
+        disease_incidence_rates = format_rates(disease_incidence_rates)
+        check_errors.check_rate_covers_all_ages(disease_incidence_rates, self.age_start, self.age_interval_length,
+                                                "model_disease_incidence_rates_path")
+        self.baseline_hazard = disease_incidence_rates
+
+    def _set_competing_incidence_rates(self, competing_incidence_rates_path: Union[str, pathlib.Path, None]):
+        if competing_incidence_rates_path is None:
+            self.competing_incidence_rates = pd.DataFrame(data=np.zeros(len(self.baseline_hazard)),
+                                                          index=self.baseline_hazard.index, columns=["rate"],
+                                                          dtype=float)
+            self.competing_incidence_rates.index.name = "age"
+        else:
+            competing_incidence_rates = utils.read_file_to_dataframe(competing_incidence_rates_path)
+            check_errors.check_rate_format(competing_incidence_rates, "model_competing_incidence_rates_path")
+            competing_incidence_rates = format_rates(competing_incidence_rates)
+            check_errors.check_rate_covers_all_ages(competing_incidence_rates, self.age_start, self.age_interval_length,
+                                                    "model_competing_incidence_rates_path")
+            self.competing_incidence_rates = competing_incidence_rates

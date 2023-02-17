@@ -60,7 +60,7 @@ def check_flexible_rate_inputs(data, data_name):
 
 def check_rates(model_competing_incidence_rates, model_disease_incidence_rates, apply_age_start,
                 apply_age_interval_length):
-    lambda_vals = check_flexible_rate_inputs(model_disease_incidence_rates, "model_disease_incidence_rates")
+    lambda_vals = check_flexible_rate_inputs(model_disease_incidence_rates, "model_disease_incidence_rates_path")
 
     if model_competing_incidence_rates is None:
         model_competing_incidence_rates = pd.DataFrame(data=np.vstack((lambda_vals["age"],
@@ -72,7 +72,7 @@ def check_rates(model_competing_incidence_rates, model_disease_incidence_rates, 
 
     if sum([x not in lambda_vals["age"] for
             x in range(np.min(apply_age_start), np.max(apply_age_start + apply_age_interval_length))]) > 0:
-        raise ValueError("ERROR: The 'model_disease_incidence_rates' input must have age-specific rates for each "
+        raise ValueError("ERROR: The 'model_disease_incidence_rates_path' input must have age-specific rates for each "
                          "integer age covered by the prediction intervals defined by 'apply_age_start' and "
                          "'apply_age_interval_length'. You must make these inputs consistent with one "
                          "another to proceed.")
@@ -258,3 +258,57 @@ def check_covariate_reference_dataset_weights_name(reference_dataset_weights_nam
     if reference_dataset_weights_name not in reference_dataset.columns:
         raise ValueError(f"ERROR: The 'model_reference_dataset_weights_name' ({reference_dataset.columns}) input "
                          f"must be a column in the 'model_reference_dataset_path' input data.")
+
+
+def check_rate_format(rates: pd.DataFrame, argument_name: str) -> None:
+    if rates.shape[1] not in [2, 3]:
+        print(f"Number of columns in '{argument_name}': {rates.shape[1]}")
+        raise ValueError(f"ERROR: The '{argument_name}' input must have either 2 or 3 columns. If the number "
+                         f"of columns is 2, their names should be 'age' and 'rate'. If the number of columns is 3, "
+                         f"their names should be start_age, end_age, and rate.")
+
+    if rates.shape[1] == 2:
+        if "age" not in rates.columns or "rate" not in rates.columns:
+            print(f"Column names in '{argument_name}': {rates.columns}")
+            raise ValueError(f"ERROR: The '{argument_name}' input must have either 2 or 3 columns. If the number "
+                             f"of columns is 2, their names should be 'age' and 'rate'. If the number of columns is 3, "
+                             f"their names should be start_age, end_age, and rate.")
+
+        if rates['age'].dtype != int:
+            raise ValueError(f"ERROR: The 'age' column in the '{argument_name}' input must only contain integer "
+                             f"values.")
+
+    if rates.shape[1] == 3:
+        if "start_age" not in rates.columns or "end_age" not in rates.columns or "rate" not in rates.columns:
+            print(f"Column names in '{argument_name}': {rates.columns}")
+            raise ValueError(f"ERROR: The '{argument_name}' input must have either 2 or 3 columns. If the number "
+                             f"of columns is 2, their names should be 'age' and 'rate'. If the number of columns is 3, "
+                             f"their names should be start_age, end_age, and rate.")
+
+        if rates['start_age'].dtype != int or rates['end_age'].dtype != int:
+            raise ValueError(f"ERROR: The 'start_age' and 'end_age' columns in the '{argument_name}' input must only "
+                             f"contain integer values.")
+
+        if np.sum(rates['start_age'].values[1:] - rates['end_age'].values[:-1]) != 0:
+            raise ValueError(f"ERROR: The 'start_age' and 'end_age' columns in the '{argument_name}' input must "
+                             f"be sequential i.e. the end age of one row must be the start age of the next row.")
+
+    if rates['rate'].dtype != float:
+        raise ValueError(f"ERROR: The 'rate' column in the '{argument_name}' input must only contain float values.")
+
+    if rates['rate'].min() < 0 or rates['rate'].max() > 1:
+        raise ValueError(f"ERROR: The 'rate' column in the '{argument_name}' input are probabilities and so, they "
+                         f"must only contain values between 0 and 1.")
+
+
+def check_rate_covers_all_ages(rates: pd.DataFrame, age_start: List[int], age_interval_length: List[int],
+                               argument_name: str) -> None:
+    age_start_not_covered = [age for age in age_start if age not in rates.index]
+    if len(age_start_not_covered) > 0:
+        raise ValueError(f"ERROR: The '{argument_name}' input must cover all ages in the 'apply_age_start' input. "
+                         f"The following ages are not covered: {age_start_not_covered}.")
+
+    age_interval_length_not_covered = [age for age in age_interval_length if age not in rates.index]
+    if len(age_interval_length_not_covered) > 0:
+        raise ValueError(f"ERROR: The '{argument_name}' input must cover all ages in the 'apply_age_interval_length' "
+                         f"input. The following ages are not covered: {age_interval_length_not_covered}.")
