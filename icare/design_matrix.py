@@ -101,25 +101,30 @@ class DesignInfo():
 
 
 def remove_intercept(design_matrix: pd.DataFrame) -> pd.DataFrame:
-    if "Intercept" != design_matrix.columns[0]:
-        if "Intercept" in design_matrix.columns:
-            raise ValueError("ERROR: Please remove the intercept term from the model formula supplied in"
-                             " 'model_covariate_formula_path'")
+    if "Intercept" not in design_matrix.columns:
         return design_matrix
 
+    intercept_index = design_matrix.columns.get_loc("Intercept")
     design_matrix.pop("Intercept")
 
     design_info = DesignInfo(design_matrix)
     design_info.column_names = [column_name for column_name in design_info.column_names if column_name != "Intercept"]
     design_info.column_name_indexes = OrderedDict(
-        [(key, value - 1) for key, value in design_info.column_name_indexes.items() if key != "Intercept"])
+        [(key, value - 1 if value > intercept_index else value)
+         for key, value in design_info.column_name_indexes.items()
+         if key != "Intercept"])
     design_info.term_names = [term_name for term_name in design_info.term_names if term_name != "Intercept"]
-    design_info.term_name_slices = OrderedDict([(key, slice(value.start - 1, value.stop - 1)) for key, value in
-                                                design_info.term_name_slices.items() if key != "Intercept"])
+    design_info.term_name_slices = OrderedDict(
+        [(key, slice(value.start - 1 if value.start > intercept_index else value.start,
+                     value.stop - 1 if value.stop > intercept_index else value.stop))
+         for key, value in design_info.term_name_slices.items()
+         if key != "Intercept"])
     design_info.terms = [term for term in design_info.terms if len(term.factors) != 0]
     design_info.term_slices = OrderedDict(
-        [(key, slice(value.start - 1, value.stop - 1)) for key, value in design_info.term_slices.items() if
-         len(key.factors) != 0])
+        [(key, slice(value.start - 1 if value.start > intercept_index else value.start,
+                     value.stop - 1 if value.stop > intercept_index else value.stop))
+         for key, value in design_info.term_slices.items()
+         if len(key.factors) != 0])
     design_info.term_codings = OrderedDict(
         [(key, value) for key, value in design_info.term_codings.items() if len(key.factors) != 0])
 
