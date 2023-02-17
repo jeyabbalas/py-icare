@@ -10,7 +10,7 @@ def snp_risk_test():
 
     absolute_risk_main.compute_absolute_risk(
         model_snp_info_path=model_snp_info,
-        model_disease_incidence_rates=model_disease_incidence_rates,
+        model_disease_incidence_rates_path=model_disease_incidence_rates,
         model_competing_incidence_rates_path=model_competing_incidence_rates,
         apply_age_start=50,
         apply_age_interval_length=30,
@@ -38,7 +38,7 @@ def snp_and_covariate_risk_test():
         model_log_relative_risk_path=model_log_relative_risk,
         model_reference_dataset_path=model_reference_dataset,
         model_family_history_variable_name=model_family_history_variable_name,
-        model_disease_incidence_rates=model_disease_incidence_rates,
+        model_disease_incidence_rates_path=model_disease_incidence_rates,
         model_competing_incidence_rates_path=model_competing_incidence_rates,
         apply_age_start=50,
         apply_age_interval_length=30,

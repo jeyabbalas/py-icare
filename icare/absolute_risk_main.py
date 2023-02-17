@@ -14,7 +14,7 @@ def hello_world(name="world"):
 
 def compute_absolute_risk(apply_age_start: Union[int, List[int]],
                           apply_age_interval_length: Union[int, List[int]],
-                          model_disease_incidence_rates: Union[str, pathlib.Path],
+                          model_disease_incidence_rates_path: Union[str, pathlib.Path],
                           model_covariate_formula_path: Union[str, pathlib.Path, None] = None,
                           model_snp_info_path: Union[str, pathlib.Path, None] = None,
                           model_log_relative_risk_path: Union[str, pathlib.Path, None] = None,
@@ -36,7 +36,7 @@ def compute_absolute_risk(apply_age_start: Union[int, List[int]],
         for the interval. If a different start age needs to be assigned for each instance in apply_covariates_profile
         and apply_snp_profile_path, provide a list of ints of the same length as the number of rows in these profiles.
     :param apply_age_interval_length:
-    :param model_disease_incidence_rates:
+    :param model_disease_incidence_rates_path:
     :param model_covariate_formula_path: a symbolic description (an R formula class object) of the model to be fitted,
         e.g. Y ~ parity + family_history.
         Please make sure that the variable name in your dataset is not from the namespace of the Python execution
@@ -66,7 +66,7 @@ def compute_absolute_risk(apply_age_start: Union[int, List[int]],
     """
 
     absolute_risk_model = AbsoluteRiskModel(
-        apply_age_start, apply_age_interval_length, model_disease_incidence_rates, model_covariate_formula_path,
+        apply_age_start, apply_age_interval_length, model_disease_incidence_rates_path, model_covariate_formula_path,
         model_snp_info_path, model_log_relative_risk_path, model_reference_dataset_path, model_reference_dataset_weights_variable_name,
         model_competing_incidence_rates_path, model_family_history_variable_name, num_imputations,
         apply_covariate_profile_path, apply_snp_profile_path)
