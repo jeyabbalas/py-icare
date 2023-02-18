@@ -67,15 +67,9 @@ def compute_absolute_risk(apply_age_start: Union[int, List[int]],
 
     absolute_risk_model = AbsoluteRiskModel(
         apply_age_start, apply_age_interval_length, model_disease_incidence_rates_path, model_covariate_formula_path,
-        model_snp_info_path, model_log_relative_risk_path, model_reference_dataset_path, model_reference_dataset_weights_variable_name,
-        model_competing_incidence_rates_path, model_family_history_variable_name, num_imputations,
-        apply_covariate_profile_path, apply_snp_profile_path)
-
-    approx_expectation_rr = np.average(np.exp(np.matmul(pop_dist_mat, beta_est)), weights=pop_weights)
-    lambda_0, precise_expectation_rr = utils.precise_lambda0(
-        lambda_vals, approx_expectation_rr, beta_est, pop_dist_mat, pop_weights
-    )
-    pop_dist_mat = pop_dist_mat.T
+        model_snp_info_path, model_log_relative_risk_path, model_reference_dataset_path,
+        model_reference_dataset_weights_variable_name, model_competing_incidence_rates_path,
+        model_family_history_variable_name, num_imputations, apply_covariate_profile_path, apply_snp_profile_path)
 
     # compute A_j for non-NAs
     final_risks = np.full((z_new.shape[1]), np.nan)
@@ -103,7 +97,8 @@ def compute_absolute_risk(apply_age_start: Union[int, List[int]],
     these = np.where(np.sum(np.array(~np.isnan(z_new), dtype=int), axis=0) == 0)[0]
     if these.shape[0] > 0:
         ref_risks, _ = utils.get_refs_risk(
-            ref_pop, apply_age_start, apply_age_interval_length, lambda_0, beta_est, model_competing_incidence_rates_path,
+            ref_pop, apply_age_start, apply_age_interval_length, lambda_0, beta_est,
+            model_competing_incidence_rates_path,
             handle_snps, num_imputations
         )
         final_risks[these] = np.average(
@@ -122,38 +117,38 @@ def compute_absolute_risk(apply_age_start: Union[int, List[int]],
 
     if return_reference_risks:
         result["reference_risk"], _ = utils.get_refs_risk(
-            ref_pop, apply_age_start, apply_age_interval_length, lambda_0, beta_est, model_competing_incidence_rates_path,
+            ref_pop, apply_age_start, apply_age_interval_length, lambda_0, beta_est,
+            model_competing_incidence_rates_path,
             handle_snps, num_imputations
         )
 
     return result
 
 
-def compute_absolute_risk_split_interval(
-        apply_age_start,
-        apply_age_interval_length,
-        apply_cov_profile,
-        model_formula,
-        model_disease_incidence_rates,
-        model_log_rr,
-        model_ref_dataset,
-        model_cov_info,
-        model_ref_dataset_weights=None,
-        model_competing_incidence_rates=None,
-        return_lp=False,
-        apply_snp_profile=None,
-        model_snp_info=None,
-        model_bin_fh_name=None,
-        cut_time=None,
-        apply_cov_profile_2=None,
-        model_formula_2=None,
-        model_log_rr_2=None,
-        model_ref_dataset_2=None,
-        model_ref_dataset_weights_2=None,
-        model_cov_info_2=None,
-        model_bin_fh_name_2=None,
-        num_imputations=5,
-        return_refs_risk=False):
+def compute_absolute_risk_split_interval(apply_age_start,
+                                         apply_age_interval_length,
+                                         apply_cov_profile,
+                                         model_formula,
+                                         model_disease_incidence_rates,
+                                         model_log_rr,
+                                         model_ref_dataset,
+                                         model_cov_info,
+                                         model_ref_dataset_weights=None,
+                                         model_competing_incidence_rates=None,
+                                         return_lp=False,
+                                         apply_snp_profile=None,
+                                         model_snp_info=None,
+                                         model_bin_fh_name=None,
+                                         cut_time=None,
+                                         apply_cov_profile_2=None,
+                                         model_formula_2=None,
+                                         model_log_rr_2=None,
+                                         model_ref_dataset_2=None,
+                                         model_ref_dataset_weights_2=None,
+                                         model_cov_info_2=None,
+                                         model_bin_fh_name_2=None,
+                                         num_imputations=5,
+                                         return_refs_risk=False):
     """
     This function is used to build an absolute risk model that incorporates different input parameters before and after
         a given time point. The model is then applied to estimate absolute risks.

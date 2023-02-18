@@ -91,14 +91,12 @@ def simulate_snps(snp_names: List[str], betas: np.ndarray, frequencies: np.ndarr
     fh_no = ~fh_yes
 
     if np.any(fh_no):
-        simulated_snps.loc[fh_no, :] = sample_genotype_from_distribution(np.array(fh_no).astype(int).sum(),
-                                                                         genotype_distribution_fh_no, len(snp_names),
-                                                                         rng)
+        simulated_snps.loc[fh_no, :] = sample_genotype_from_distribution(
+            np.array(fh_no).astype(int).sum(), genotype_distribution_fh_no, len(snp_names), rng)
 
     if np.any(fh_yes):
-        simulated_snps.loc[fh_yes, :] = sample_genotype_from_distribution(np.array(fh_yes).astype(int).sum(),
-                                                                          genotype_distribution_fh_yes, len(snp_names),
-                                                                          rng)
+        simulated_snps.loc[fh_yes, :] = sample_genotype_from_distribution(
+            np.array(fh_yes).astype(int).sum(), genotype_distribution_fh_yes, len(snp_names), rng)
 
     return simulated_snps
 
