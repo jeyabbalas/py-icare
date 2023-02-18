@@ -1,5 +1,5 @@
 import pathlib
-from typing import Union, List, Optional, Dict
+from typing import Union, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -9,7 +9,7 @@ from icare.covariate_model import CovariateModel
 from icare.snp_model import SnpModel
 
 
-def format_rates(rates: pd.DataFrame) -> pd.DataFrame:
+def format_rates(rates: pd.DataFrame) -> pd.Series:
     if len(rates.columns) == 3:
         age = list(range(rates["start_age"].min(), rates["end_age"].max() + 1))
         rate = np.zeros(len(age), dtype=float)
@@ -20,9 +20,48 @@ def format_rates(rates: pd.DataFrame) -> pd.DataFrame:
                                    (formatted_rates["age"] < row["end_age"])
             formatted_rates.loc[ages_within_interval, "rate"] = row["rate"] / len(formatted_rates[ages_within_interval])
 
-        return formatted_rates.set_index("age")
+        formatted_rates = pd.Series(data=formatted_rates["rate"].values, index=formatted_rates["age"], name="rate")
+        formatted_rates.index.name = "age"
 
-    return rates.set_index("age")
+        return formatted_rates
+
+    rates = pd.Series(data=rates["rate"].values, index=rates["age"], name="rate")
+    rates.index.name = "age"
+
+    return rates
+
+
+def estimate_baseline_hazard(marginal_disease_incidence_rates: pd.Series, beta: np.ndarray, z: pd.DataFrame,
+                             w: np.ndarray) -> pd.Series:
+    """
+    Baseline hazard: age-specific disease incidence rates when all covariates take their baseline values.
+    """
+    expected_risk_score_current = np.average(np.exp(np.matmul(z, beta)), weights=w)
+    expected_risk_score_previous = expected_risk_score_current - 1
+    epsilon = 1e-3
+
+    while np.sum(np.abs(expected_risk_score_current - expected_risk_score_previous)) > epsilon:
+        expected_risk_score_previous = expected_risk_score_current
+
+        # Update baseline hazard using the new expected risk score
+        baseline_hazard = marginal_disease_incidence_rates.values / expected_risk_score_previous
+
+        # Update expected risk score using the new baseline hazard (under the proportional hazard model)
+        weight_matrix = np.repeat(w.reshape(-1, 1), len(baseline_hazard), axis=1)
+        hazard_scale = -np.exp(np.matmul(z.values, beta))
+        cumsum_baseline_hazard = np.concatenate((np.array([0.]), np.cumsum(baseline_hazard)[:-1]))
+        numerator = np.exp(
+            np.matmul(hazard_scale.reshape(-1, 1), cumsum_baseline_hazard.reshape(1, -1))) * weight_matrix
+        denominator = np.sum(numerator, axis=0)
+        probability_z_given_t = numerator / denominator
+        expected_risk_score_current = np.sum(probability_z_given_t * np.exp(np.matmul(z.values, beta)).reshape(-1, 1),
+                                             axis=0)
+
+    baseline_hazard = marginal_disease_incidence_rates.values / expected_risk_score_current
+    baseline_hazard = pd.Series(data=baseline_hazard, index=marginal_disease_incidence_rates.index, name="rate")
+    baseline_hazard.index.name = "age"
+
+    return baseline_hazard
 
 
 class AbsoluteRiskModel:
@@ -35,8 +74,8 @@ class AbsoluteRiskModel:
     population_weights: np.ndarray
     num_imputations: int
 
-    baseline_hazard: pd.DataFrame
-    competing_incidence_rates: pd.DataFrame
+    baseline_hazard: pd.Series
+    competing_incidence_rates: pd.Series
 
     def __init__(self,
                  apply_age_start: Union[int, List[int]],
@@ -146,19 +185,19 @@ class AbsoluteRiskModel:
             raise ValueError("ERROR: No query profiles were set. Please pass inputs for arguments "
                              "'apply_covariate_profile_path' and/or 'apply_snp_profile_path'.")
 
-    def _set_baseline_hazard(self, disease_incidence_rates_path: Union[str, pathlib.Path]) -> None:
-        disease_incidence_rates = utils.read_file_to_dataframe(disease_incidence_rates_path)
-        check_errors.check_rate_format(disease_incidence_rates, "model_disease_incidence_rates_path")
-        disease_incidence_rates = format_rates(disease_incidence_rates)
-        check_errors.check_rate_covers_all_ages(disease_incidence_rates, self.age_start, self.age_interval_length,
-                                                "model_disease_incidence_rates_path")
-        self.baseline_hazard = disease_incidence_rates
+    def _set_baseline_hazard(self, marginal_disease_incidence_rates_path: Union[str, pathlib.Path]) -> None:
+        marginal_disease_incidence_rates = utils.read_file_to_dataframe(marginal_disease_incidence_rates_path)
+        check_errors.check_rate_format(marginal_disease_incidence_rates, "model_disease_incidence_rates_path")
+        marginal_disease_incidence_rates = format_rates(marginal_disease_incidence_rates)
+        check_errors.check_rate_covers_all_ages(marginal_disease_incidence_rates, self.age_start,
+                                                self.age_interval_length, "model_disease_incidence_rates_path")
+        self.baseline_hazard = estimate_baseline_hazard(marginal_disease_incidence_rates, self.beta_estimates,
+                                                        self.population_distribution, self.population_weights)
 
     def _set_competing_incidence_rates(self, competing_incidence_rates_path: Union[str, pathlib.Path, None]):
         if competing_incidence_rates_path is None:
-            self.competing_incidence_rates = pd.DataFrame(data=np.zeros(len(self.baseline_hazard)),
-                                                          index=self.baseline_hazard.index, columns=["rate"],
-                                                          dtype=float)
+            self.competing_incidence_rates = pd.Series(data=np.zeros(len(self.baseline_hazard)),
+                                                       index=self.baseline_hazard.index, name="rate")
             self.competing_incidence_rates.index.name = "age"
         else:
             competing_incidence_rates = utils.read_file_to_dataframe(competing_incidence_rates_path)
