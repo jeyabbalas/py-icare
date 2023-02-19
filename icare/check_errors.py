@@ -225,12 +225,11 @@ def check_rate_format(rates: pd.DataFrame, argument_name: str) -> None:
 
 def check_rate_covers_all_ages(rates: pd.Series, age_start: List[int], age_interval_length: List[int],
                                argument_name: str) -> None:
-    age_start_not_covered = [age for age in age_start if age not in rates.index]
-    if len(age_start_not_covered) > 0:
-        raise ValueError(f"ERROR: The '{argument_name}' input must cover all ages in the 'apply_age_start' input. "
-                         f"The following ages are not covered: {age_start_not_covered}.")
-
-    age_interval_length_not_covered = [age for age in age_interval_length if age not in rates.index]
-    if len(age_interval_length_not_covered) > 0:
-        raise ValueError(f"ERROR: The '{argument_name}' input must cover all ages in the 'apply_age_interval_length' "
-                         f"input. The following ages are not covered: {age_interval_length_not_covered}.")
+    step = 1
+    age_range = list(range(np.min(np.array(age_start)),
+                           np.max(np.array(age_start) + np.array(age_interval_length)), step))
+    ages_not_covered = [age for age in age_range if ((age not in rates.index) or (pd.isna(rates.loc[age])))]
+    if len(ages_not_covered) > 0:
+        raise ValueError(f"ERROR: The '{argument_name}' input must cover all ages from 'apply_age_start' to "
+                         f"'apply_age_start' + 'apply_age_interval_length'. \n"
+                         f"The following ages are not covered: {ages_not_covered}.")

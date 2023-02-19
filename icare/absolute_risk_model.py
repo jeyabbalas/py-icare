@@ -36,7 +36,8 @@ def estimate_baseline_hazard(marginal_disease_incidence_rates: pd.Series, beta: 
     """
     Baseline hazard: age-specific disease incidence rates when all covariates take their baseline values.
     """
-    expected_risk_score_current = np.average(np.exp(np.matmul(z, beta)), weights=w)
+    expected_risk_score_current = np.repeat(np.average(np.exp(np.matmul(z, beta)), weights=w),
+                                            len(marginal_disease_incidence_rates))
     expected_risk_score_previous = expected_risk_score_current - 1
     epsilon = 1e-3
 
