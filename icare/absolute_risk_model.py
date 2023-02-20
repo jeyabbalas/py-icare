@@ -266,17 +266,18 @@ class AbsoluteRiskModel:
                                                     "model_competing_incidence_rates_path")
             self.competing_incidence_rates = competing_incidence_rates
 
-    def computer_absolute_risks(self) -> AbsoluteRiskResults:
+    def compute_absolute_risks(self) -> AbsoluteRiskResults:
         self.results = AbsoluteRiskResults()
         self.results.set_ages(self.age_start, self.age_interval_length)
         linear_predictors = self.z_profile @ self.beta_estimates
         self.results.set_linear_predictors(linear_predictors, list(self.z_profile.index))
 
         profiles_no_missing_values = ~linear_predictors.isnull()
-        risk_estimates = estimate_absolute_risks(
+        risk_estimates = np.full(len(self.z_profile), np.nan)
+        risk_estimates[profiles_no_missing_values] = estimate_absolute_risks(
             self.results.age_interval_start[profiles_no_missing_values],
             self.results.age_interval_stop[profiles_no_missing_values], self.baseline_hazards,
             self.competing_incidence_rates, self.beta_estimates, self.z_profile.loc[profiles_no_missing_values])
-        self.results.set_risk_estimates(risk_estimates, list(self.z_profile.index[profiles_no_missing_values]))
+        self.results.set_risk_estimates(risk_estimates, list(self.z_profile.index))
 
         return self.results
