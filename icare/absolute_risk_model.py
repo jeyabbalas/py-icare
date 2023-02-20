@@ -82,18 +82,18 @@ def estimate_baseline_hazard(marginal_disease_incidence_rates: pd.Series, beta: 
     return baseline_hazard
 
 
-def calculate_inner_integral(age_range: np.ndarray, age_mask: np.ndarray, baseline_hazard: pd.Series,
-                             competing_incidence_rates: pd.Series, betas: np.ndarray, z: pd.DataFrame) -> np.ndarray:
-    baseline_hazard_matrix = np.repeat(
-        baseline_hazard.loc[age_range].values.reshape(1, -1), len(z), axis=0) * age_mask
+def calculate_absolute_risk_inner_integral(age_range: np.ndarray, age_mask: np.ndarray, baseline_hazard: pd.Series,
+                                           competing_incidence_rates: pd.Series, betas: np.ndarray,
+                                           z: pd.DataFrame) -> np.ndarray:
+    baseline_hazard_matrix = np.repeat(baseline_hazard.loc[age_range].values.reshape(1, -1), len(z), axis=0) * age_mask
     competing_incidence_rates_matrix = np.repeat(
         competing_incidence_rates.loc[age_range].values.reshape(1, -1), len(z), axis=0) * age_mask
 
     inner_integral = baseline_hazard_matrix * np.exp(z @ betas).values.reshape(-1, 1) + competing_incidence_rates_matrix
+    inner_integral = np.cumsum(inner_integral, axis=1) * age_mask
     inner_integral = np.concatenate((np.zeros((inner_integral.shape[0], 1)), inner_integral[:, :-1]), axis=1)
-    cumsum_inner_integral = np.cumsum(inner_integral, axis=1) * age_mask
 
-    return cumsum_inner_integral
+    return inner_integral
 
 
 def estimate_absolute_risks(age_interval_starts: np.ndarray, age_interval_stops: np.ndarray,
@@ -102,17 +102,18 @@ def estimate_absolute_risks(age_interval_starts: np.ndarray, age_interval_stops:
     age_range = np.arange(np.min(age_interval_starts), np.max(age_interval_stops) + 1)
     age_range_matrix = np.repeat(age_range.reshape(1, -1), len(z), axis=0)
     age_mask = ((age_range_matrix >= age_interval_starts.reshape(-1, 1)) &
-                (age_range_matrix <= age_interval_stops.reshape(-1, 1))).astype(float)
+                (age_range_matrix < age_interval_stops.reshape(-1, 1))).astype(float)
     log_baseline_hazard_age_range = np.log(baseline_hazard.loc[age_range].values)
 
     # Calculate the inner integral
-    inner_integral = calculate_inner_integral(age_range, age_mask, baseline_hazard, competing_incidence_rates, betas, z)
+    inner_integral = calculate_absolute_risk_inner_integral(age_range, age_mask, baseline_hazard,
+                                                            competing_incidence_rates, betas, z)
 
     # Calculate outer integral
     log_baseline_hazard_matrix = np.repeat(log_baseline_hazard_age_range.reshape(1, -1), len(z), axis=0)
     linear_predictor_matrix = np.repeat((z @ betas).values.reshape(-1, 1), len(age_range), axis=1)
     absolute_risks = np.sum(
-        np.exp((log_baseline_hazard_matrix + linear_predictor_matrix - inner_integral) * age_mask)[:, :-1], axis=1)
+        (np.exp(log_baseline_hazard_matrix + linear_predictor_matrix - inner_integral) * age_mask), axis=1)
 
     return absolute_risks
 
