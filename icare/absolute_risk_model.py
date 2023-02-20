@@ -25,8 +25,8 @@ class AbsoluteRiskResults:
     def set_linear_predictors(self, linear_predictors: np.ndarray, indices: List) -> None:
         self.linear_predictors = pd.Series(data=linear_predictors, index=indices, name="linear_predictors", dtype=float)
 
-    def set_risk_estimates(self, linear_predictors: np.ndarray, indices: List) -> None:
-        self.risk_estimates = pd.Series(data=linear_predictors, index=indices, name="risk_estimates", dtype=float)
+    def set_risk_estimates(self, risk_estimates: np.ndarray, indices: List) -> None:
+        self.risk_estimates = pd.Series(data=risk_estimates, index=indices, name="risk_estimates", dtype=float)
 
 
 def format_rates(rates: pd.DataFrame) -> pd.Series:
@@ -106,14 +106,19 @@ def estimate_absolute_risks(age_interval_starts: np.ndarray, age_interval_stops:
                             baseline_hazard: pd.Series, competing_incidence_rates: pd.Series, betas: np.ndarray,
                             z: pd.DataFrame) -> np.ndarray:
     age_range = np.arange(np.min(age_interval_starts), np.max(age_interval_stops) + 1)
-    baseline_hazard_age_range = baseline_hazard.loc[age_range].values
-    competing_incidence_rates_age_range = competing_incidence_rates.loc[age_range].values
+    log_baseline_hazard_age_range = np.log(baseline_hazard.loc[age_range].values)
 
     # Calculate the inner integral
     inner_integral = calculate_inner_integral(age_interval_starts, age_interval_stops, baseline_hazard,
                                               competing_incidence_rates, betas, z)
 
-    pass
+    # Calculate outer integral
+    log_baseline_hazard_matrix = np.repeat(log_baseline_hazard_age_range.reshape(1, -1), len(z), axis=0)
+    linear_predictor_matrix = np.repeat((z @ betas).values.reshape(-1, 1), len(age_range), axis=1)
+    absolute_risks = np.sum(np.exp(log_baseline_hazard_matrix + linear_predictor_matrix - inner_integral)[:, :-1],
+                            axis=1)
+
+    return absolute_risks
 
 
 class AbsoluteRiskModel:
@@ -272,5 +277,6 @@ class AbsoluteRiskModel:
             self.results.age_interval_start[profiles_no_missing_values],
             self.results.age_interval_stop[profiles_no_missing_values], self.baseline_hazards,
             self.competing_incidence_rates, self.beta_estimates, self.z_profile.loc[profiles_no_missing_values])
+        self.results.set_risk_estimates(risk_estimates, list(self.z_profile.index[profiles_no_missing_values]))
 
         return self.results
