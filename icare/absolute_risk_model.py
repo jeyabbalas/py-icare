@@ -9,6 +9,26 @@ from icare.covariate_model import CovariateModel
 from icare.snp_model import SnpModel
 
 
+class AbsoluteRiskResults:
+    """
+    A data structure to hold the results from the calculation of absolute risks.
+    """
+    age_interval_start: np.ndarray
+    age_interval_stop: np.ndarray
+    linear_predictors: pd.Series
+    risk_estimates: pd.Series
+
+    def set_ages(self, age_start: List[int], age_interval_length: List[int]) -> None:
+        self.age_interval_start = np.array(age_start)
+        self.age_interval_stop = self.age_interval_start + np.array(age_interval_length)
+
+    def set_linear_predictors(self, linear_predictors: np.ndarray, indices: List) -> None:
+        self.linear_predictors = pd.Series(data=linear_predictors, index=indices, name="linear_predictors", dtype=float)
+
+    def set_risk_estimates(self, linear_predictors: np.ndarray, indices: List) -> None:
+        self.risk_estimates = pd.Series(data=linear_predictors, index=indices, name="risk_estimates", dtype=float)
+
+
 def format_rates(rates: pd.DataFrame) -> pd.Series:
     if len(rates.columns) == 3:
         age = list(range(rates["start_age"].min(), rates["end_age"].max() + 1))
@@ -20,12 +40,13 @@ def format_rates(rates: pd.DataFrame) -> pd.Series:
                                    (formatted_rates["age"] < row["end_age"])
             formatted_rates.loc[ages_within_interval, "rate"] = row["rate"] / len(formatted_rates[ages_within_interval])
 
-        formatted_rates = pd.Series(data=formatted_rates["rate"].values, index=formatted_rates["age"], name="rate")
+        formatted_rates = pd.Series(data=formatted_rates["rate"].values, index=formatted_rates["age"], name="rate",
+                                    dtype=float)
         formatted_rates.index.name = "age"
 
         return formatted_rates
 
-    rates = pd.Series(data=rates["rate"].values, index=rates["age"], name="rate")
+    rates = pd.Series(data=rates["rate"].values, index=rates["age"], name="rate", dtype=float)
     rates.index.name = "age"
 
     return rates
@@ -36,7 +57,7 @@ def estimate_baseline_hazard(marginal_disease_incidence_rates: pd.Series, beta: 
     """
     Baseline hazard: age-specific disease incidence rates when all covariates take their baseline values.
     """
-    expected_risk_score_current = np.repeat(np.average(np.exp(np.matmul(z, beta)), weights=w),
+    expected_risk_score_current = np.repeat(np.average(np.exp(z @ beta), weights=w),
                                             len(marginal_disease_incidence_rates))
     expected_risk_score_previous = expected_risk_score_current - 1
     epsilon = 1e-3
@@ -49,20 +70,50 @@ def estimate_baseline_hazard(marginal_disease_incidence_rates: pd.Series, beta: 
 
         # Update expected risk score using the new baseline hazard (under the proportional hazard model)
         weight_matrix = np.repeat(w.reshape(-1, 1), len(baseline_hazard), axis=1)
-        hazard_scale = -np.exp(np.matmul(z.values, beta))
+        hazard_scale = -np.exp(z.values @ beta)
         cumsum_baseline_hazard = np.concatenate((np.array([0.]), np.cumsum(baseline_hazard)[:-1]))
-        numerator = np.exp(
-            np.matmul(hazard_scale.reshape(-1, 1), cumsum_baseline_hazard.reshape(1, -1))) * weight_matrix
+        numerator = np.exp(hazard_scale.reshape(-1, 1) @ cumsum_baseline_hazard.reshape(1, -1)) * weight_matrix
         denominator = np.sum(numerator, axis=0)
         probability_z_given_t = numerator / denominator
-        expected_risk_score_current = np.sum(probability_z_given_t * np.exp(np.matmul(z.values, beta)).reshape(-1, 1),
-                                             axis=0)
+        expected_risk_score_current = np.sum(probability_z_given_t * np.exp(z.values @ beta).reshape(-1, 1), axis=0)
 
-    baseline_hazard = marginal_disease_incidence_rates.values / expected_risk_score_current
-    baseline_hazard = pd.Series(data=baseline_hazard, index=marginal_disease_incidence_rates.index, name="rate")
-    baseline_hazard.index.name = "age"
+    baseline_hazard = marginal_disease_incidence_rates.copy(deep=True) / expected_risk_score_current
 
     return baseline_hazard
+
+
+def calculate_inner_integral(age_interval_starts: np.ndarray, age_interval_stops: np.ndarray,
+                             baseline_hazard: pd.Series, competing_incidence_rates: pd.Series, betas: np.ndarray,
+                             z: pd.DataFrame) -> np.ndarray:
+    age_range = np.arange(np.min(age_interval_starts), np.max(age_interval_stops) + 1)
+    age_range_matrix = np.repeat(age_range.reshape(1, -1), len(z), axis=0)
+    baseline_hazard_matrix = np.repeat(baseline_hazard.loc[age_range].values.reshape(1, -1), len(z), axis=0)
+    competing_incidence_rates_matrix = np.repeat(competing_incidence_rates.loc[age_range].values.reshape(1, -1), len(z),
+                                                 axis=0)
+
+    inner_integral = baseline_hazard_matrix * np.exp(z @ betas).values.reshape(-1, 1) + competing_incidence_rates_matrix
+    mask = (age_range_matrix >= age_interval_starts.reshape(-1, 1)) & \
+           (age_range_matrix <= age_interval_stops.reshape(-1, 1))
+    masked_inner_integral = inner_integral * mask.astype(float)
+    masked_inner_integral = np.concatenate(
+        (np.zeros((masked_inner_integral.shape[0], 1)), masked_inner_integral[:, :-1]), axis=1)
+    cumsum_inner_integral = np.cumsum(masked_inner_integral, axis=1) * mask.astype(float)
+
+    return cumsum_inner_integral
+
+
+def estimate_absolute_risks(age_interval_starts: np.ndarray, age_interval_stops: np.ndarray,
+                            baseline_hazard: pd.Series, competing_incidence_rates: pd.Series, betas: np.ndarray,
+                            z: pd.DataFrame) -> np.ndarray:
+    age_range = np.arange(np.min(age_interval_starts), np.max(age_interval_stops) + 1)
+    baseline_hazard_age_range = baseline_hazard.loc[age_range].values
+    competing_incidence_rates_age_range = competing_incidence_rates.loc[age_range].values
+
+    # Calculate the inner integral
+    inner_integral = calculate_inner_integral(age_interval_starts, age_interval_stops, baseline_hazard,
+                                              competing_incidence_rates, betas, z)
+
+    pass
 
 
 class AbsoluteRiskModel:
@@ -75,8 +126,10 @@ class AbsoluteRiskModel:
     population_weights: np.ndarray
     num_imputations: int
 
-    baseline_hazard: pd.Series
+    baseline_hazards: pd.Series
     competing_incidence_rates: pd.Series
+
+    results: AbsoluteRiskResults
 
     def __init__(self,
                  apply_age_start: Union[int, List[int]],
@@ -192,13 +245,13 @@ class AbsoluteRiskModel:
         marginal_disease_incidence_rates = format_rates(marginal_disease_incidence_rates)
         check_errors.check_rate_covers_all_ages(marginal_disease_incidence_rates, self.age_start,
                                                 self.age_interval_length, "model_disease_incidence_rates_path")
-        self.baseline_hazard = estimate_baseline_hazard(marginal_disease_incidence_rates, self.beta_estimates,
-                                                        self.population_distribution, self.population_weights)
+        self.baseline_hazards = estimate_baseline_hazard(marginal_disease_incidence_rates, self.beta_estimates,
+                                                         self.population_distribution, self.population_weights)
 
     def _set_competing_incidence_rates(self, competing_incidence_rates_path: Union[str, pathlib.Path, None]):
         if competing_incidence_rates_path is None:
-            self.competing_incidence_rates = pd.Series(data=np.zeros(len(self.baseline_hazard)),
-                                                       index=self.baseline_hazard.index, name="rate")
+            self.competing_incidence_rates = pd.Series(data=np.zeros(len(self.baseline_hazards)),
+                                                       index=self.baseline_hazards.index, name="rate", dtype=float)
             self.competing_incidence_rates.index.name = "age"
         else:
             competing_incidence_rates = utils.read_file_to_dataframe(competing_incidence_rates_path)
@@ -207,3 +260,17 @@ class AbsoluteRiskModel:
             check_errors.check_rate_covers_all_ages(competing_incidence_rates, self.age_start, self.age_interval_length,
                                                     "model_competing_incidence_rates_path")
             self.competing_incidence_rates = competing_incidence_rates
+
+    def computer_absolute_risks(self) -> AbsoluteRiskResults:
+        self.results = AbsoluteRiskResults()
+        self.results.set_ages(self.age_start, self.age_interval_length)
+        linear_predictors = self.z_profile @ self.beta_estimates
+        self.results.set_linear_predictors(linear_predictors, list(self.z_profile.index))
+
+        profiles_no_missing_values = ~linear_predictors.isnull()
+        risk_estimates = estimate_absolute_risks(
+            self.results.age_interval_start[profiles_no_missing_values],
+            self.results.age_interval_stop[profiles_no_missing_values], self.baseline_hazards,
+            self.competing_incidence_rates, self.beta_estimates, self.z_profile.loc[profiles_no_missing_values])
+
+        return self.results
