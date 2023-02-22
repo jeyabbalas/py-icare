@@ -25,7 +25,6 @@ def compute_absolute_risk(apply_age_start: Union[int, List[int]],
                           num_imputations: int = 5,
                           apply_covariate_profile_path: Union[str, pathlib.Path, None] = None,
                           apply_snp_profile_path: Union[str, pathlib.Path, None] = None,
-                          use_c_code: bool = False,
                           return_linear_predictors: bool = False,
                           return_reference_risks: bool = False) -> dict:
     """
@@ -71,43 +70,7 @@ def compute_absolute_risk(apply_age_start: Union[int, List[int]],
         model_reference_dataset_weights_variable_name, model_competing_incidence_rates_path,
         model_family_history_variable_name, num_imputations, apply_covariate_profile_path, apply_snp_profile_path)
 
-    # compute A_j for non-NAs
-    final_risks = np.full((z_new.shape[1]), np.nan)
-    lps = np.matmul(z_new.T, beta_est)
-    idxs_not_nan = np.where(np.sum(np.array(np.isnan(z_new), dtype=int), axis=0) == 0)
-
-    if idxs_not_nan[0].shape[0] > 0:
-        final_risks[idxs_not_nan] = utils.comp_a_j(
-            z_new[idxs_not_nan], apply_age_start[idxs_not_nan],
-            apply_age_interval_length[idxs_not_nan], lambda_0,
-            beta_est, model_competing_incidence_rates_path
-        )
-
-    miss = np.where(np.isnan(final_risks))[0]
-    present = np.where(~np.isnan(final_risks))
-    ref_pop = pop_dist_mat
-    n_cuts = 100
-
-    tic = time.time()
-    final_risks, lps = utils.handle_missing_data(
-        apply_age_start, apply_age_interval_length, z_new, miss, present, n_cuts, final_risks,
-        ref_pop, pop_weights, lambda_0, beta_est, model_competing_incidence_rates_path, lps
-    )
-
-    these = np.where(np.sum(np.array(~np.isnan(z_new), dtype=int), axis=0) == 0)[0]
-    if these.shape[0] > 0:
-        ref_risks, _ = utils.get_refs_risk(
-            ref_pop, apply_age_start, apply_age_interval_length, lambda_0, beta_est,
-            model_competing_incidence_rates_path,
-            handle_snps, num_imputations
-        )
-        final_risks[these] = np.average(
-            ref_risks[~np.isnan(ref_risks)],
-            weights=pop_weights[:ref_risks.shape[0]][~np.isnan(ref_risks)]
-        )
-
-    toc = time.time()
-    print(f"Time elapsed: {toc - tic:.5} seconds.")
+    absolute_risk_model.compute_absolute_risks()
 
     result = misc.package_results(
         final_risks, z_new, model_includes_covariates, handle_snps, apply_age_start, apply_age_interval_length,
