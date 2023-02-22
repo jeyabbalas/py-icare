@@ -6,6 +6,7 @@ import pandas as pd
 
 from icare import check_errors, utils
 from icare.covariate_model import CovariateModel
+from icare.imputation import model_free_impute_absolute_risk
 from icare.snp_model import SnpModel
 
 
@@ -14,13 +15,13 @@ class AbsoluteRiskResults:
     A data structure to hold the results from the calculation of absolute risks.
     """
     age_interval_start: np.ndarray
-    age_interval_stop: np.ndarray
+    age_interval_end: np.ndarray
     linear_predictors: pd.Series
     risk_estimates: pd.Series
 
     def set_ages(self, age_start: List[int], age_interval_length: List[int]) -> None:
         self.age_interval_start = np.array(age_start)
-        self.age_interval_stop = self.age_interval_start + np.array(age_interval_length)
+        self.age_interval_end = self.age_interval_start + np.array(age_interval_length)
 
     def set_linear_predictors(self, linear_predictors: np.ndarray, indices: List) -> None:
         self.linear_predictors = pd.Series(data=linear_predictors, index=indices, name="linear_predictors", dtype=float)
@@ -52,8 +53,8 @@ def format_rates(rates: pd.DataFrame) -> pd.Series:
     return rates
 
 
-def estimate_baseline_hazard(marginal_disease_incidence_rates: pd.Series, beta: np.ndarray, z: pd.DataFrame,
-                             w: np.ndarray) -> pd.Series:
+def estimate_baseline_hazards(marginal_disease_incidence_rates: pd.Series, beta: np.ndarray, z: pd.DataFrame,
+                              w: np.ndarray) -> pd.Series:
     """
     Baseline hazard: age-specific disease incidence rates when all covariates take their baseline values.
     """
@@ -66,54 +67,56 @@ def estimate_baseline_hazard(marginal_disease_incidence_rates: pd.Series, beta: 
         expected_risk_score_previous = expected_risk_score_current
 
         # Update baseline hazard using the new expected risk score
-        baseline_hazard = marginal_disease_incidence_rates.values / expected_risk_score_previous
+        baseline_hazards = marginal_disease_incidence_rates.values / expected_risk_score_previous
 
         # Update expected risk score using the new baseline hazard (under the proportional hazard model)
-        weight_matrix = np.repeat(w.reshape(-1, 1), len(baseline_hazard), axis=1)
+        weight_matrix = np.repeat(w.reshape(-1, 1), len(baseline_hazards), axis=1)
         hazard_scale = -np.exp(z.values @ beta)
-        cumsum_baseline_hazard = np.concatenate((np.array([0.]), np.cumsum(baseline_hazard)[:-1]))
-        numerator = np.exp(hazard_scale.reshape(-1, 1) @ cumsum_baseline_hazard.reshape(1, -1)) * weight_matrix
+        cumsum_baseline_hazards = np.concatenate((np.array([0.]), np.cumsum(baseline_hazards)[:-1]))
+        numerator = np.exp(hazard_scale.reshape(-1, 1) @ cumsum_baseline_hazards.reshape(1, -1)) * weight_matrix
         denominator = np.sum(numerator, axis=0)
         probability_z_given_t = numerator / denominator
         expected_risk_score_current = np.sum(probability_z_given_t * np.exp(z.values @ beta).reshape(-1, 1), axis=0)
 
-    baseline_hazard = marginal_disease_incidence_rates.copy(deep=True) / expected_risk_score_current
+    baseline_hazards = marginal_disease_incidence_rates.copy(deep=True) / expected_risk_score_current
 
-    return baseline_hazard
+    return baseline_hazards
 
 
-def calculate_absolute_risk_inner_integral(age_range: np.ndarray, age_mask: np.ndarray, baseline_hazard: pd.Series,
+def calculate_absolute_risk_inner_integral(age_range: np.ndarray, age_mask: np.ndarray, baseline_hazards: pd.Series,
                                            competing_incidence_rates: pd.Series, betas: np.ndarray,
                                            z: pd.DataFrame) -> np.ndarray:
-    baseline_hazard_matrix = np.repeat(baseline_hazard.loc[age_range].values.reshape(1, -1), len(z), axis=0) * age_mask
+    baseline_hazards_matrix = np.repeat(
+        baseline_hazards.loc[age_range].values.reshape(1, -1), len(z), axis=0) * age_mask
     competing_incidence_rates_matrix = np.repeat(
         competing_incidence_rates.loc[age_range].values.reshape(1, -1), len(z), axis=0) * age_mask
 
-    inner_integral = baseline_hazard_matrix * np.exp(z @ betas).values.reshape(-1, 1) + competing_incidence_rates_matrix
+    inner_integral = baseline_hazards_matrix * np.exp(z @ betas).values.reshape(-1, 1) + \
+                     competing_incidence_rates_matrix
     inner_integral = np.cumsum(inner_integral, axis=1) * age_mask
     inner_integral = np.concatenate((np.zeros((inner_integral.shape[0], 1)), inner_integral[:, :-1]), axis=1)
 
     return inner_integral
 
 
-def estimate_absolute_risks(age_interval_starts: np.ndarray, age_interval_stops: np.ndarray,
-                            baseline_hazard: pd.Series, competing_incidence_rates: pd.Series, betas: np.ndarray,
+def estimate_absolute_risks(age_interval_starts: np.ndarray, age_interval_ends: np.ndarray,
+                            baseline_hazards: pd.Series, competing_incidence_rates: pd.Series, betas: np.ndarray,
                             z: pd.DataFrame) -> np.ndarray:
-    age_range = np.arange(np.min(age_interval_starts), np.max(age_interval_stops) + 1)
+    age_range = np.arange(np.min(age_interval_starts), np.max(age_interval_ends) + 1)
     age_range_matrix = np.repeat(age_range.reshape(1, -1), len(z), axis=0)
     age_mask = ((age_range_matrix >= age_interval_starts.reshape(-1, 1)) &
-                (age_range_matrix < age_interval_stops.reshape(-1, 1))).astype(float)
-    log_baseline_hazard_age_range = np.log(baseline_hazard.loc[age_range].values)
+                (age_range_matrix < age_interval_ends.reshape(-1, 1))).astype(float)
+    log_baseline_hazards_age_range = np.log(baseline_hazards.loc[age_range].values)
 
     # Calculate the inner integral
-    inner_integral = calculate_absolute_risk_inner_integral(age_range, age_mask, baseline_hazard,
+    inner_integral = calculate_absolute_risk_inner_integral(age_range, age_mask, baseline_hazards,
                                                             competing_incidence_rates, betas, z)
 
     # Calculate outer integral
-    log_baseline_hazard_matrix = np.repeat(log_baseline_hazard_age_range.reshape(1, -1), len(z), axis=0)
+    log_baseline_hazards_matrix = np.repeat(log_baseline_hazards_age_range.reshape(1, -1), len(z), axis=0)
     linear_predictor_matrix = np.repeat((z @ betas).values.reshape(-1, 1), len(age_range), axis=1)
     absolute_risks = np.sum(
-        (np.exp(log_baseline_hazard_matrix + linear_predictor_matrix - inner_integral) * age_mask), axis=1)
+        (np.exp(log_baseline_hazards_matrix + linear_predictor_matrix - inner_integral) * age_mask), axis=1)
 
     return absolute_risks
 
@@ -149,12 +152,10 @@ class AbsoluteRiskModel:
                  snp_profile_path: Union[str, pathlib.Path, None]) -> None:
         covariate_model: Optional[CovariateModel] = None
         snp_model: Optional[SnpModel] = None
+        self.num_imputations = 1
 
         check_errors.check_age_interval_types(apply_age_start, apply_age_interval_length)
         self.age_start, self.age_interval_length = apply_age_start, apply_age_interval_length
-
-        check_errors.check_num_imputations(num_imputations)
-        self.num_imputations = num_imputations
 
         covariate_parameters = [formula_path, log_relative_risk_path, reference_dataset_path, covariate_profile_path]
         any_covariate_parameter_specified = any([x is not None for x in covariate_parameters])
@@ -168,6 +169,9 @@ class AbsoluteRiskModel:
             self.age_interval_length = covariate_model.age_interval_length
 
         if instantiate_special_snp_model:
+            check_errors.check_num_imputations(num_imputations)
+            self.num_imputations = num_imputations
+
             snp_model = SnpModel(
                 snp_info_path, snp_profile_path, model_family_history_variable_name, self.age_start,
                 self.age_interval_length, self.num_imputations, covariate_model)
@@ -175,6 +179,7 @@ class AbsoluteRiskModel:
             if covariate_model is None:
                 self.age_start = snp_model.age_start
                 self.age_interval_length = snp_model.age_interval_length
+
             check_errors.check_profiles(covariate_model.z_profile, snp_model.z_profile)
         else:
             if covariate_model is None:
@@ -186,7 +191,7 @@ class AbsoluteRiskModel:
         self._set_population_weights(covariate_model, snp_model)
         self._set_beta_estimates(covariate_model, snp_model)
         self._set_z_profile(covariate_model, snp_model)
-        self._set_baseline_hazard(age_specific_disease_incidence_rates_path)
+        self._set_baseline_hazards(age_specific_disease_incidence_rates_path)
         self._set_competing_incidence_rates(age_specific_competing_incidence_rates_path)
 
     def _set_population_distribution(self, covariate_model: Optional[CovariateModel],
@@ -241,14 +246,14 @@ class AbsoluteRiskModel:
             raise ValueError("ERROR: No query profiles were set. Please pass inputs for arguments "
                              "'apply_covariate_profile_path' and/or 'apply_snp_profile_path'.")
 
-    def _set_baseline_hazard(self, marginal_disease_incidence_rates_path: Union[str, pathlib.Path]) -> None:
+    def _set_baseline_hazards(self, marginal_disease_incidence_rates_path: Union[str, pathlib.Path]) -> None:
         marginal_disease_incidence_rates = utils.read_file_to_dataframe(marginal_disease_incidence_rates_path)
         check_errors.check_rate_format(marginal_disease_incidence_rates, "model_disease_incidence_rates_path")
         marginal_disease_incidence_rates = format_rates(marginal_disease_incidence_rates)
         check_errors.check_rate_covers_all_ages(marginal_disease_incidence_rates, self.age_start,
                                                 self.age_interval_length, "model_disease_incidence_rates_path")
-        self.baseline_hazards = estimate_baseline_hazard(marginal_disease_incidence_rates, self.beta_estimates,
-                                                         self.population_distribution, self.population_weights)
+        self.baseline_hazards = estimate_baseline_hazards(marginal_disease_incidence_rates, self.beta_estimates,
+                                                          self.population_distribution, self.population_weights)
 
     def _set_competing_incidence_rates(self, competing_incidence_rates_path: Union[str, pathlib.Path, None]):
         if competing_incidence_rates_path is None:
@@ -269,12 +274,27 @@ class AbsoluteRiskModel:
         linear_predictors = self.z_profile @ self.beta_estimates
         self.results.set_linear_predictors(linear_predictors, list(self.z_profile.index))
 
-        profiles_no_missing_values = ~linear_predictors.isnull()
         risk_estimates = np.full(len(self.z_profile), np.nan)
-        risk_estimates[profiles_no_missing_values] = estimate_absolute_risks(
-            self.results.age_interval_start[profiles_no_missing_values],
-            self.results.age_interval_stop[profiles_no_missing_values], self.baseline_hazards,
-            self.competing_incidence_rates, self.beta_estimates, self.z_profile.loc[profiles_no_missing_values])
+
+        profiles_without_missing_values = ~linear_predictors.isnull()
+        if profiles_without_missing_values.any():
+            risk_estimates[profiles_without_missing_values] = estimate_absolute_risks(
+                self.results.age_interval_start[profiles_without_missing_values],
+                self.results.age_interval_end[profiles_without_missing_values], self.baseline_hazards,
+                self.competing_incidence_rates, self.beta_estimates,
+                self.z_profile.loc[profiles_without_missing_values])
+
+        profiles_with_missing_values = linear_predictors.isnull()
+        if profiles_with_missing_values.any():
+            risk_estimates[profiles_with_missing_values], linear_predictors[profiles_with_missing_values] = \
+                model_free_impute_absolute_risk(
+                    self.results.age_interval_start[profiles_with_missing_values],
+                    self.results.age_interval_end[profiles_with_missing_values], self.baseline_hazards,
+                    self.competing_incidence_rates, self.beta_estimates,
+                    self.z_profile.loc[profiles_with_missing_values], self.population_distribution,
+                    self.population_weights)
+
         self.results.set_risk_estimates(risk_estimates, list(self.z_profile.index))
+        self.results.set_linear_predictors(linear_predictors, list(self.z_profile.index))
 
         return self.results
