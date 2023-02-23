@@ -233,10 +233,3 @@ def check_rate_covers_all_ages(rates: pd.Series, age_start: List[int], age_inter
         raise ValueError(f"ERROR: The '{argument_name}' input must cover all ages from 'apply_age_start' to "
                          f"'apply_age_start' + 'apply_age_interval_length'. \n"
                          f"The following ages are not covered: {ages_not_covered}.")
-
-
-def check_cutpoints(cutpoints: np.ndarray) -> None:
-    if cutpoints.shape[0] < 2:
-        raise ValueError(f"ERROR: Calculating cut-points for model-free imputation of missing values led to only "
-                         f"{cutpoints.shape[0]} values. At least 2 cut-points are necessary to proceed. The "
-                         f"calculated cut-points were: {cutpoints}.")

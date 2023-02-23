@@ -139,7 +139,10 @@ def round_down_to_significant_digits(values: np.ndarray, significant_digits: np.
 def get_cutpoints(values: pd.Series, quantiles: np.ndarray) -> np.ndarray:
     cutpoints = np.quantile(values, quantiles)
     cutpoints = round_down_to_significant_digits(cutpoints, get_significant_digits(cutpoints))
-    check_errors.check_cutpoints(cutpoints)
+    if cutpoints.shape[0] < 2:
+        raise ValueError(f"ERROR: Calculating cut-points for model-free imputation of missing values led to only "
+                         f"{cutpoints.shape[0]} values. At least 2 cut-points are necessary to proceed. The "
+                         f"calculated cut-points were: {cutpoints}.")
     cutpoints = np.append(np.unique(cutpoints), np.inf)
     return cutpoints
 
@@ -154,7 +157,7 @@ def get_samples_within_range(values: pd.Series, lower: float, upper: float) -> p
     return values[(values >= lower) & (values < upper)]
 
 
-def expand_quantile_range(values: pd.Series, lower_index: int, upper_index: int) -> pd.Series:
+def get_samples_from_expanded_quantile_range(values: pd.Series, lower_index: int, upper_index: int) -> pd.Series:
     lower_index -= 1
     upper_index += 1
 
@@ -169,7 +172,8 @@ def expand_quantile_range(values: pd.Series, lower_index: int, upper_index: int)
 def model_free_impute_absolute_risk(age_interval_starts: np.ndarray, age_interval_ends: np.ndarray,
                                     baseline_hazards: pd.Series, competing_incidence_rates: pd.Series,
                                     betas: np.ndarray, z_profile: pd.DataFrame, population_distribution: pd.DataFrame,
-                                    population_weights: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+                                    population_weights: np.ndarray, num_imputations: int) -> Tuple[
+    np.ndarray, np.ndarray]:
     profile_risks = np.zeros(len(age_interval_starts))
     profile_linear_predictors = np.zeros(len(age_interval_starts))
     population_linear_predictors = population_distribution @ betas
@@ -192,11 +196,19 @@ def model_free_impute_absolute_risk(age_interval_starts: np.ndarray, age_interva
             variables_observed = np.where(~np.isnan(z))[0]
             betas_observed = betas[variables_observed]
 
-            # TODO: If no variables are observed, the profile risk is set to population average.
+            # If no variables are observed, the profile risk is set to the population average.
             if len(variables_observed) == 0:
-                profile_risks[profile_index] = np.average(population_risks, weights=population_weights)
-                profile_linear_predictors[profile_index] = np.average(population_linear_predictors,
-                                                                      weights=population_weights)
+                imputation_averaged_population_risks = population_risks.reshape(
+                    -1, num_imputations, order="F").mean(axis=1)
+                imputation_averaged_population_linear_predictors = population_linear_predictors.values.reshape(
+                    -1, num_imputations, order="F").mean(axis=1)
+
+                profile_risks[profile_index] = np.average(
+                    imputation_averaged_population_risks,
+                    weights=population_weights[:len(imputation_averaged_population_risks)])
+                profile_linear_predictors[profile_index] = np.average(
+                    imputation_averaged_population_linear_predictors, weights=population_weights)
+
                 continue
 
             population_linear_predictors_observed = population_distribution.iloc[:, variables_observed] @ betas_observed
@@ -214,9 +226,10 @@ def model_free_impute_absolute_risk(age_interval_starts: np.ndarray, age_interva
             while len(population_within_range) == 0:
                 if cutpoint_lower_index == 0 and \
                         cutpoint_upper_index == len(cutpoints_population_linear_predictors_observed) - 1:
-                    raise ValueError(f"ERROR: During model-free imputation, no samples were found in the population "
-                                     f"using only observed features in profile: {z_profile.index[profile_index]}.")
-                population_within_range = expand_quantile_range(
+                    raise ValueError(f"ERROR: During model-free imputation, no samples were found in the reference "
+                                     f"population using only the observed features in the profile ID: "
+                                     f"{z_profile.index[profile_index]}.")
+                population_within_range = get_samples_from_expanded_quantile_range(
                     population_linear_predictors_observed, cutpoint_lower_index, cutpoint_upper_index)
 
             selected = [population_linear_predictors.index.get_loc(index) for index in population_within_range.index]
@@ -398,7 +411,7 @@ class AbsoluteRiskModel:
                     self.results.age_interval_end[profiles_with_missing_values], self.baseline_hazards,
                     self.competing_incidence_rates, self.beta_estimates,
                     self.z_profile.loc[profiles_with_missing_values], self.population_distribution,
-                    self.population_weights)
+                    self.population_weights, self.num_imputations)
 
         self.results.set_risk_estimates(risk_estimates, list(self.z_profile.index))
         self.results.set_linear_predictors(linear_predictors, list(self.z_profile.index))

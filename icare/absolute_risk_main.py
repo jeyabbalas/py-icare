@@ -1,8 +1,5 @@
 import pathlib
-import time
 from typing import Union, List, Optional
-
-import numpy as np
 
 from icare import misc, utils
 from icare.absolute_risk_model import AbsoluteRiskModel

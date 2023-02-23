@@ -2,6 +2,7 @@ import json
 import pathlib
 from typing import Union, List, Tuple, Type
 
+import numpy as np
 import pandas as pd
 
 from icare import check_errors
@@ -17,7 +18,7 @@ def read_file_to_dict(file: Union[str, pathlib.Path]) -> dict:
         return json.load(f)
 
 
-def read_file_to_dataframe(file: Union[str, pathlib.Path]) -> pd.DataFrame:
+def read_file_to_dataframe(file: Union[str, pathlib.Path], allow_integers: bool = True) -> pd.DataFrame:
     with open(file, mode="r") as f:
         header = f.readline().split(",")
         first_row = f.readline().split(",")
@@ -30,15 +31,19 @@ def read_file_to_dataframe(file: Union[str, pathlib.Path]) -> pd.DataFrame:
 
     df = pd.read_csv(file, dtype=dtype)
 
+    if not allow_integers:
+        for col in df.columns:
+            # to support nullable integer types
+            if np.issubdtype(df[col].dtype, int):
+                df[col] = df[col].astype(float)
+
     if "id" in df.columns:
         df.set_index("id", inplace=True)
 
     return df
 
 
-def read_file_to_dataframe_given_dtype(
-        file: Union[str, pathlib.Path],
-        dtype: Union[dict, Type[float], Type[int], Type[str], Type[object]]) -> pd.DataFrame:
+def read_file_to_dataframe_given_dtype(file, dtype) -> pd.DataFrame:
     header = pd.read_csv(file, nrows=1).columns
     if "id" in header:
         if isinstance(dtype, dict) and "id" not in dtype:

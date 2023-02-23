@@ -35,7 +35,7 @@ class CovariateModel:
 
         formula = utils.read_file_to_string(formula_path)
         log_relative_risk = utils.read_file_to_dict(log_relative_risk_path)
-        reference_dataset = utils.read_file_to_dataframe(reference_dataset_path)
+        reference_dataset = utils.read_file_to_dataframe(reference_dataset_path, allow_integers=False)
 
         self._set_population_distribution(formula, reference_dataset)
         self._set_population_weights(reference_dataset_weights_variable_name, reference_dataset)
