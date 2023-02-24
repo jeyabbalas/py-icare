@@ -1,7 +1,7 @@
 import pathlib
 from typing import Union, List, Optional
 
-from icare import misc, utils
+from icare import misc
 from icare.absolute_risk_model import AbsoluteRiskModel
 
 
@@ -65,24 +65,12 @@ def compute_absolute_risk(apply_age_start: Union[int, List[int]],
         apply_age_start, apply_age_interval_length, model_disease_incidence_rates_path, model_covariate_formula_path,
         model_snp_info_path, model_log_relative_risk_path, model_reference_dataset_path,
         model_reference_dataset_weights_variable_name, model_competing_incidence_rates_path,
-        model_family_history_variable_name, num_imputations, apply_covariate_profile_path, apply_snp_profile_path)
+        model_family_history_variable_name, num_imputations, apply_covariate_profile_path, apply_snp_profile_path,
+        return_reference_risks)
 
-    absolute_risk_model.compute_absolute_risks()
+    results = absolute_risk_model.compute_absolute_risks()
 
-    result = misc.package_results(
-        final_risks, z_new, model_includes_covariates, handle_snps, apply_age_start, apply_age_interval_length,
-        apply_covariate_profile_path, model_log_relative_risk_path, beta_est, apply_snp_profile_path,
-        model_snp_info_path["snp_name"].values, return_linear_predictors, lps
-    )
-
-    if return_reference_risks:
-        result["reference_risk"], _ = utils.get_refs_risk(
-            ref_pop, apply_age_start, apply_age_interval_length, lambda_0, beta_est,
-            model_competing_incidence_rates_path,
-            handle_snps, num_imputations
-        )
-
-    return result
+    return misc.package_absolute_risk_results_to_dict(results, return_linear_predictors, return_reference_risks)
 
 
 def compute_absolute_risk_split_interval(apply_age_start,

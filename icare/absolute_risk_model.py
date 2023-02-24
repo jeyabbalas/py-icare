@@ -245,6 +245,7 @@ class AbsoluteRiskModel:
     age_start: Union[int, List[int]]
     age_interval_length: Union[int, List[int]]
     beta_estimates: np.ndarray
+    profile: pd.DataFrame
     z_profile: pd.DataFrame
     population_distribution: pd.DataFrame
     population_weights: np.ndarray
@@ -253,6 +254,7 @@ class AbsoluteRiskModel:
     baseline_hazards: pd.Series
     competing_incidence_rates: pd.Series
 
+    return_population_risks: bool
     results: AbsoluteRiskResults
 
     def __init__(self,
@@ -268,10 +270,14 @@ class AbsoluteRiskModel:
                  model_family_history_variable_name: str,
                  num_imputations: int,
                  covariate_profile_path: Union[str, pathlib.Path, None],
-                 snp_profile_path: Union[str, pathlib.Path, None]) -> None:
+                 snp_profile_path: Union[str, pathlib.Path, None],
+                 return_reference_risks: bool) -> None:
         covariate_model: Optional[CovariateModel] = None
         snp_model: Optional[SnpModel] = None
         self.num_imputations = 1
+
+        check_errors.check_return_population_risks_type(return_reference_risks)
+        self.return_population_risks = return_reference_risks
 
         check_errors.check_age_interval_types(apply_age_start, apply_age_interval_length)
         self.age_start, self.age_interval_length = apply_age_start, apply_age_interval_length
@@ -310,6 +316,7 @@ class AbsoluteRiskModel:
         self._set_population_weights(covariate_model, snp_model)
         self._set_beta_estimates(covariate_model, snp_model)
         self._set_z_profile(covariate_model, snp_model)
+        self._set_profile(covariate_model, snp_model)
         self._set_baseline_hazards(age_specific_disease_incidence_rates_path)
         self._set_competing_incidence_rates(age_specific_competing_incidence_rates_path)
 
@@ -359,10 +366,12 @@ class AbsoluteRiskModel:
             self.z_profile.index = covariate_model.z_profile.index
         elif covariate_model is not None:
             self.z_profile = covariate_model.z_profile
+            self.z_profile.index = covariate_model.z_profile.index
         elif snp_model is not None:
             self.z_profile = snp_model.z_profile
+            self.z_profile.index = snp_model.z_profile.index
         else:
-            raise ValueError("ERROR: No query profiles were set. Please pass inputs for arguments "
+            raise ValueError("ERROR: No query profile design matrices were set. Please pass inputs for arguments "
                              "'apply_covariate_profile_path' and/or 'apply_snp_profile_path'.")
 
     def _set_baseline_hazards(self, marginal_disease_incidence_rates_path: Union[str, pathlib.Path]) -> None:
@@ -417,3 +426,18 @@ class AbsoluteRiskModel:
         self.results.set_linear_predictors(linear_predictors, list(self.z_profile.index))
 
         return self.results
+
+    def _set_profile(self, covariate_model: Optional[CovariateModel], snp_model: Optional[SnpModel]) -> None:
+        if covariate_model is not None and snp_model is not None:
+            check_errors.check_profiles(covariate_model.profile, snp_model.profile)
+            self.profile = pd.concat([covariate_model.profile, snp_model.profile], axis=1)
+            self.profile.index = covariate_model.profile.index
+        elif covariate_model is not None:
+            self.profile = covariate_model.profile
+            self.profile.index = covariate_model.profile.index
+        elif snp_model is not None:
+            self.profile = snp_model.profile
+            self.profile.index = snp_model.profile.index
+        else:
+            raise ValueError("ERROR: No query profiles were set. Please pass inputs for arguments "
+                             "'apply_covariate_profile_path' and/or 'apply_snp_profile_path'.")

@@ -233,3 +233,8 @@ def check_rate_covers_all_ages(rates: pd.Series, age_start: List[int], age_inter
         raise ValueError(f"ERROR: The '{argument_name}' input must cover all ages from 'apply_age_start' to "
                          f"'apply_age_start' + 'apply_age_interval_length'. \n"
                          f"The following ages are not covered: {ages_not_covered}.")
+
+
+def check_return_population_risks_type(return_reference_risks: bool) -> None:
+    if not isinstance(return_reference_risks, bool):
+        raise ValueError("ERROR: The 'return_reference_risks' input must be a boolean.")

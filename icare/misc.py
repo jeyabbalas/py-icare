@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 
+from icare.absolute_risk_model import AbsoluteRiskResults
+
 
 def package_results(final_risks, z_new, model_includes_covariates, handle_snps, apply_age_start,
                     apply_age_interval_length, apply_covariates_profile, model_log_relative_risk, beta_est,
@@ -54,3 +56,8 @@ def package_results(final_risks, z_new, model_includes_covariates, handle_snps, 
         result["lps"] = lps.tolist()
 
     return result
+
+
+def package_absolute_risk_results_to_dict(results: AbsoluteRiskResults, return_linear_predictors: bool,
+                                          return_reference_risks: bool) -> dict:
+    return dict()

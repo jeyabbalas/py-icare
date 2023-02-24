@@ -12,6 +12,7 @@ class CovariateModel:
     age_start: Union[int, List[int]]
     age_interval_length: Union[int, List[int]]
     beta_estimates: np.ndarray
+    profile: pd.DataFrame
     z_profile: pd.DataFrame
     population_distribution: pd.DataFrame
     population_weights: np.ndarray
@@ -42,6 +43,7 @@ class CovariateModel:
         self._set_beta_estimates(log_relative_risk)
 
         profile = utils.read_file_to_dataframe_given_dtype(profile_path, dtype=reference_dataset.dtypes.to_dict())
+        self._set_profile(profile)
         self._set_z_profile(formula, profile, reference_dataset)
         self.age_start, self.age_interval_length = utils.set_age_intervals(
             age_start, age_interval_length, len(self.z_profile), "apply_covariate_profile_path")
@@ -64,6 +66,9 @@ class CovariateModel:
     def _set_beta_estimates(self, log_relative_risk: dict) -> None:
         check_errors.check_covariate_log_relative_risk(log_relative_risk, self.population_distribution)
         self.beta_estimates = np.array([log_relative_risk[covariate] for covariate in self.population_distribution])
+
+    def _set_profile(self, profile: pd.DataFrame) -> None:
+        self.profile = profile
 
     def _set_z_profile(self, formula: str, profile: pd.DataFrame, reference_dataset: pd.DataFrame) -> None:
         check_errors.check_covariate_profile(reference_dataset, profile)

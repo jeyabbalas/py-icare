@@ -120,6 +120,7 @@ class SnpModel:
     age_start: Union[int, List[int]]
     age_interval_length: Union[int, List[int]]
     beta_estimates: np.ndarray
+    profile: pd.DataFrame
     z_profile: pd.DataFrame
     population_distribution: pd.DataFrame
     population_weights: np.ndarray
@@ -138,6 +139,7 @@ class SnpModel:
         snp_names, betas, frequencies = extract_snp_info(info_path)
 
         self._set_z_profile(profile_path, age_start, snp_names, covariate_model)
+        self._set_profile()
         self.age_start, self.age_interval_length = utils.set_age_intervals(
             age_start, age_interval_length, len(self.z_profile), "apply_snp_profile_path")
         self._set_family_history(covariate_model, family_history_variable_name)
@@ -219,3 +221,6 @@ class SnpModel:
             beta_family_history = covariate_model.beta_estimates[family_history_column_index]
             covariate_model.beta_estimates[family_history_column_index] = adjust_beta_for_family_history(
                 betas, frequencies, beta_family_history)
+
+    def _set_profile(self):
+        self.profile = self.z_profile.copy()
