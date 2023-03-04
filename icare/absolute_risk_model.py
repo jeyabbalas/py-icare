@@ -173,7 +173,7 @@ def model_free_impute_absolute_risk(age_interval_starts: np.ndarray, age_interva
                                     baseline_hazards: pd.Series, competing_incidence_rates: pd.Series,
                                     betas: np.ndarray, z_profile: pd.DataFrame, population_distribution: pd.DataFrame,
                                     population_weights: np.ndarray, num_imputations: int) -> Tuple[
-    np.ndarray, np.ndarray]:
+        np.ndarray, np.ndarray]:
     profile_risks = np.zeros(len(age_interval_starts))
     profile_linear_predictors = np.zeros(len(age_interval_starts))
     population_linear_predictors = population_distribution @ betas
@@ -396,7 +396,7 @@ class AbsoluteRiskModel:
                                                     "model_competing_incidence_rates_path")
             self.competing_incidence_rates = competing_incidence_rates
 
-    def compute_absolute_risks(self) -> AbsoluteRiskResults:
+    def compute_absolute_risks(self) -> None:
         self.results = AbsoluteRiskResults()
         self.results.set_ages(self.age_start, self.age_interval_length)
         linear_predictors = self.z_profile @ self.beta_estimates

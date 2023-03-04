@@ -68,9 +68,10 @@ def compute_absolute_risk(apply_age_start: Union[int, List[int]],
         model_family_history_variable_name, num_imputations, apply_covariate_profile_path, apply_snp_profile_path,
         return_reference_risks)
 
-    results = absolute_risk_model.compute_absolute_risks()
+    absolute_risk_model.compute_absolute_risks()
 
-    return misc.package_absolute_risk_results_to_dict(results, return_linear_predictors, return_reference_risks)
+    return misc.package_absolute_risk_results_to_dict(absolute_risk_model, return_linear_predictors,
+                                                      return_reference_risks)
 
 
 def compute_absolute_risk_split_interval(apply_age_start,
