@@ -246,7 +246,8 @@ def model_free_impute_absolute_risk(age_interval_starts: np.ndarray, age_interva
 
 def calculate_population_risks(age_interval_starts: np.ndarray, age_interval_ends: np.ndarray,
                                baseline_hazards: pd.Series, competing_incidence_rates: pd.Series,
-                               betas: np.ndarray, population_distribution: pd.DataFrame) -> pd.DataFrame:
+                               betas: np.ndarray, population_distribution: pd.DataFrame,
+                               num_imputations: int) -> pd.DataFrame:
     age_intervals = np.stack((age_interval_starts, age_interval_ends)).T
     unique_age_intervals = np.unique(age_intervals, axis=0)
     population_risks = np.zeros((len(unique_age_intervals), 2 + population_distribution.shape[0]))
@@ -259,7 +260,8 @@ def calculate_population_risks(age_interval_starts: np.ndarray, age_interval_end
             betas, population_distribution)
         population_risks[interval_id, 0] = age_interval_start
         population_risks[interval_id, 1] = age_interval_end
-        population_risks[interval_id, 2:] = population_risks_in_interval
+        population_risks[interval_id, 2:] = population_risks_in_interval.reshape(
+            -1, num_imputations, order="F").mean(axis=1)
         interval_id += 1
 
     population_risks = pd.DataFrame(
@@ -456,7 +458,7 @@ class AbsoluteRiskModel:
         if self.return_population_risks:
             population_risk_estimates = calculate_population_risks(
                 self.results.age_interval_start, self.results.age_interval_end, self.baseline_hazards,
-                self.competing_incidence_rates, self.beta_estimates, self.population_distribution)
+                self.competing_incidence_rates, self.beta_estimates, self.population_distribution, self.num_imputations)
             self.results.set_population_risk_estimates(population_risk_estimates)
 
         return self.results
