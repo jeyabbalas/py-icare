@@ -17,7 +17,7 @@ class AbsoluteRiskResults:
     age_interval_end: np.ndarray
     linear_predictors: pd.Series
     risk_estimates: pd.Series
-    population_risk_estimates: pd.DataFrame
+    population_risks_per_interval: dict
 
     def set_ages(self, age_start: List[int], age_interval_length: List[int]) -> None:
         self.age_interval_start = np.array(age_start)
@@ -29,8 +29,8 @@ class AbsoluteRiskResults:
     def set_risk_estimates(self, risk_estimates: np.ndarray, indices: List) -> None:
         self.risk_estimates = pd.Series(data=risk_estimates, index=indices, name="risk_estimates", dtype=float)
 
-    def set_population_risk_estimates(self, population_risk_estimates):
-        self.population_risk_estimates = population_risk_estimates
+    def set_population_risks_per_interval(self, population_risks_per_interval):
+        self.population_risks_per_interval = population_risks_per_interval
 
 
 def format_rates(rates: pd.DataFrame) -> pd.Series:
@@ -244,30 +244,27 @@ def model_free_impute_absolute_risk(age_interval_starts: np.ndarray, age_interva
     return profile_risks, profile_linear_predictors
 
 
-def calculate_population_risks(age_interval_starts: np.ndarray, age_interval_ends: np.ndarray,
-                               baseline_hazards: pd.Series, competing_incidence_rates: pd.Series,
-                               betas: np.ndarray, population_distribution: pd.DataFrame,
-                               num_imputations: int) -> pd.DataFrame:
+def calculate_population_risks_per_interval(
+        age_interval_starts: np.ndarray, age_interval_ends: np.ndarray, baseline_hazards: pd.Series,
+        competing_incidence_rates: pd.Series, betas: np.ndarray, population_distribution: pd.DataFrame,
+        num_imputations: int) -> list:
     age_intervals = np.stack((age_interval_starts, age_interval_ends)).T
     unique_age_intervals = np.unique(age_intervals, axis=0)
-    population_risks = np.zeros((len(unique_age_intervals), 2 + population_distribution.shape[0]))
+    population_risks_per_interval = list()
 
-    interval_id = 0
     for (age_interval_start, age_interval_end) in unique_age_intervals:
-        population_risks_in_interval = estimate_absolute_risks(
+        population_risks_for_interval = estimate_absolute_risks(
             np.repeat(age_interval_start, len(population_distribution)),
             np.repeat(age_interval_end, len(population_distribution)), baseline_hazards, competing_incidence_rates,
             betas, population_distribution)
-        population_risks[interval_id, 0] = age_interval_start
-        population_risks[interval_id, 1] = age_interval_end
-        population_risks[interval_id, 2:] = population_risks_in_interval.reshape(
-            -1, num_imputations, order="F").mean(axis=1)
-        interval_id += 1
+        population_risks_this_interval = dict()
+        population_risks_this_interval["age_interval_start"] = age_interval_start
+        population_risks_this_interval["age_interval_end"] = age_interval_end
+        population_risks_this_interval["population_risks"] = population_risks_for_interval.reshape(
+            -1, num_imputations, order="F").mean(axis=1).tolist()
+        population_risks_per_interval.append(population_risks_this_interval)
 
-    population_risks = pd.DataFrame(
-        population_risks, columns=["age_interval_start", "age_interval_end", *population_distribution.index])
-
-    return population_risks
+    return population_risks_per_interval
 
 
 class AbsoluteRiskModel:
@@ -456,10 +453,10 @@ class AbsoluteRiskModel:
         self.results.set_linear_predictors(linear_predictors, list(self.z_profile.index))
 
         if self.return_population_risks:
-            population_risk_estimates = calculate_population_risks(
+            population_risks_per_interval = calculate_population_risks_per_interval(
                 self.results.age_interval_start, self.results.age_interval_end, self.baseline_hazards,
                 self.competing_incidence_rates, self.beta_estimates, self.population_distribution, self.num_imputations)
-            self.results.set_population_risk_estimates(population_risk_estimates)
+            self.results.set_population_risks_per_interval(population_risks_per_interval)
 
         return self.results
 

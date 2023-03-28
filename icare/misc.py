@@ -75,6 +75,6 @@ def package_absolute_risk_results_to_dict(absolute_risk_model: AbsoluteRiskModel
     results["profile"] = profile.to_json(orient="records")
 
     if return_reference_risks:
-        results["reference_risks"] = absolute_risk_model.results.population_risk_estimates.to_json(orient="records")
+        results["reference_risks"] = absolute_risk_model.results.population_risks_per_interval
 
     return results
