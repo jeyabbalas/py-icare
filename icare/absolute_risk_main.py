@@ -56,8 +56,8 @@ def compute_absolute_risk(apply_age_start: Union[int, List[int]],
         Please make sure that the variable name in your dataset is not from the namespace of the Python execution
         context, including Python standard library, numpy, pandas, patsy, and icare. For example, a variable name "C"
         and "Q" would conflict with Patsy built-in functions of the same name. Variable names with the R-style periods
-        in them should be surrounded by the quote function Q(family.history). In Python, periods are used to access
-        attributes of objects, so they are not allowed in Patsy variable names unless surrounded by Q().
+        in them should be surrounded by the Patsy quote function Q(family.history). In Python, periods are used to
+        access attributes of objects, so they are not allowed in Patsy variable names unless surrounded by Q().
         Patsy language is similar to R's formula object (https://patsy.readthedocs.io/en/latest/R-comparison.html).
     :param model_log_relative_risk_path:
         A path to a JSON file containing the log odds ratios, of the variables in the model except the intercept term,
@@ -96,10 +96,14 @@ def compute_absolute_risk(apply_age_start: Union[int, List[int]],
         Set True to return the absolute risk estimates for each individual in the 'model_reference_dataset_path'
         dataset.
     :return:
-        This function returns a dictionary, with the following keys—
+        A dictionary with the following keys—
             1) 'beta_used':
                 A dictionary of feature names and the associated beta values that were used to compute the absolute risk
                 estimates.
+                A Pandas Series can be reconstructed using the following code:
+                    import pandas as pd
+                    results = compute_absolute_risk(...)
+                    pd.Series(results["beta_used"])
             2) 'profile':
                 A records-oriented JSON of the input profile data, the specified age intervals, and the calculated
                 absolute risk estimates. If 'return_linear_predictors' is set to True, they are also included as an
