@@ -196,7 +196,7 @@ def check_rate_format(rates: pd.DataFrame, argument_name: str) -> None:
                              f"of columns is 2, their names should be 'age' and 'rate'. If the number of columns is 3, "
                              f"their names should be start_age, end_age, and rate.")
 
-        if rates['age'].dtype != int:
+        if rates['age'].dtype != np.int64:
             raise ValueError(f"ERROR: The 'age' column in the '{argument_name}' input must only contain integer "
                              f"values.")
 
@@ -207,7 +207,7 @@ def check_rate_format(rates: pd.DataFrame, argument_name: str) -> None:
                              f"of columns is 2, their names should be 'age' and 'rate'. If the number of columns is 3, "
                              f"their names should be start_age, end_age, and rate.")
 
-        if rates['start_age'].dtype != int or rates['end_age'].dtype != int:
+        if rates['start_age'].dtype != np.int64 or rates['end_age'].dtype != np.int64:
             raise ValueError(f"ERROR: The 'start_age' and 'end_age' columns in the '{argument_name}' input must only "
                              f"contain integer values.")
 
