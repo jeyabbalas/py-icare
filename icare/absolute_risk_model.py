@@ -258,8 +258,8 @@ def calculate_population_risks_per_interval(
             np.repeat(age_interval_end, len(population_distribution)), baseline_hazards, competing_incidence_rates,
             betas, population_distribution)
         population_risks_this_interval = dict()
-        population_risks_this_interval["age_interval_start"] = age_interval_start
-        population_risks_this_interval["age_interval_end"] = age_interval_end
+        population_risks_this_interval["age_interval_start"] = int(age_interval_start)
+        population_risks_this_interval["age_interval_end"] = int(age_interval_end)
         population_risks_this_interval["population_risks"] = population_risks_for_interval.reshape(
             -1, num_imputations, order="F").mean(axis=1).tolist()
         population_risks_per_interval.append(population_risks_this_interval)
