@@ -121,7 +121,7 @@ class SnpModel:
     age_interval_length: Union[int, List[int]]
     beta_estimates: np.ndarray
     profile: pd.DataFrame
-    z_profile: pd.DataFrame
+    z_profile: pd.DataFrame  # z_profile is the design matrix generated from profile; for SNP model, they are the same
     population_distribution: pd.DataFrame
     population_weights: np.ndarray
     family_history: FamilyHistory

@@ -211,7 +211,8 @@ def model_free_impute_absolute_risk(age_interval_starts: np.ndarray, age_interva
                     imputation_averaged_population_risks,
                     weights=population_weights[:len(imputation_averaged_population_risks)])
                 profile_linear_predictors[profile_index] = np.average(
-                    imputation_averaged_population_linear_predictors, weights=population_weights)
+                    imputation_averaged_population_linear_predictors,
+                    weights=population_weights[:len(imputation_averaged_population_linear_predictors)])
 
                 continue
 
@@ -273,7 +274,7 @@ class AbsoluteRiskModel:
     age_interval_length: Union[int, List[int]]
     beta_estimates: np.ndarray
     profile: pd.DataFrame
-    z_profile: pd.DataFrame
+    z_profile: pd.DataFrame  # z_profile is the design matrix generated from profile
     population_distribution: pd.DataFrame
     population_weights: np.ndarray
     num_imputations: int
@@ -331,8 +332,8 @@ class AbsoluteRiskModel:
             if covariate_model is None:
                 self.age_start = snp_model.age_start
                 self.age_interval_length = snp_model.age_interval_length
-
-            check_errors.check_profiles(covariate_model.z_profile, snp_model.z_profile)
+            else:
+                check_errors.check_profiles(covariate_model.z_profile, snp_model.z_profile)
         else:
             if covariate_model is None:
                 raise ValueError("ERROR: Since you did not provide any covariate model parameters, it is assumed"
