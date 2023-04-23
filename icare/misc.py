@@ -5,7 +5,7 @@ def package_absolute_risk_results_to_dict(absolute_risk_model: AbsoluteRiskModel
                                           return_reference_risks: bool) -> dict:
     results = dict()
 
-    results["beta_used"] = dict(zip(absolute_risk_model.population_distribution.columns.tolist(),
+    results["model"] = dict(zip(absolute_risk_model.population_distribution.columns.tolist(),
                                     absolute_risk_model.beta_estimates.tolist()))
 
     profile = absolute_risk_model.profile.copy(deep=True)

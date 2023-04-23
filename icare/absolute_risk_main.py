@@ -5,10 +5,6 @@ from icare import misc
 from icare.absolute_risk_model import AbsoluteRiskModel
 
 
-def hello_world(name="world"):
-    return f"Hello, {name}!"
-
-
 def compute_absolute_risk(apply_age_start: Union[int, List[int]],
                           apply_age_interval_length: Union[int, List[int]],
                           model_disease_incidence_rates_path: Union[str, pathlib.Path],
@@ -97,13 +93,13 @@ def compute_absolute_risk(apply_age_start: Union[int, List[int]],
         dataset.
     :return:
         A dictionary with the following keys—
-            1) 'beta_used':
+            1) 'model':
                 A dictionary of feature names and the associated beta values that were used to compute the absolute risk
                 estimates.
                 A Pandas Series can be reconstructed using the following code:
                     import pandas as pd
                     results = compute_absolute_risk(...)
-                    pd.Series(results["beta_used"])
+                    pd.Series(results["model"])
             2) 'profile':
                 A records-oriented JSON of the input profile data, the specified age intervals, and the calculated
                 absolute risk estimates. If 'return_linear_predictors' is set to True, they are also included as an
@@ -142,7 +138,6 @@ def compute_absolute_risk_split_interval(apply_age_start: Union[int, List[int]],
                                          model_cov_info,
                                          model_ref_dataset_weights=None,
                                          model_competing_incidence_rates=None,
-                                         return_lp=False,
                                          apply_snp_profile=None,
                                          model_snp_info=None,
                                          model_bin_fh_name=None,
@@ -155,34 +150,34 @@ def compute_absolute_risk_split_interval(apply_age_start: Union[int, List[int]],
                                          model_cov_info_2=None,
                                          model_bin_fh_name_2=None,
                                          num_imputations=5,
-                                         return_refs_risk=False):
+                                         return_linear_predictors: bool = False,
+                                         return_reference_risks: bool = False) -> dict:
     """
     This function is used to build an absolute risk model that incorporates different input parameters before and after
         a given time point. The model is then applied to estimate absolute risks.
 
-    :param apply_age_start:
-    :param apply_age_interval_length:
-    :param apply_cov_profile:
-    :param model_formula:
-    :param model_disease_incidence_rates:
-    :param model_log_rr:
-    :param model_ref_dataset:
-    :param model_cov_info:
-    :param model_ref_dataset_weights:
-    :param model_competing_incidence_rates:
-    :param return_lp:
-    :param apply_snp_profile:
-    :param model_snp_info:
-    :param model_bin_fh_name:
-    :param cut_time:
-    :param apply_cov_profile_2:
-    :param model_formula_2:
-    :param model_log_rr_2:
-    :param model_ref_dataset_2:
-    :param model_ref_dataset_weights_2:
-    :param model_cov_info_2:
-    :param model_bin_fh_name_2:
-    :param num_imputations:
-    :param return_refs_risk:
+    :param return_linear_predictors:
+        Set True to return the calculated linear predictor values for each individual in the
+        'apply_covariate_profile_path' and/or 'apply_snp_profile_path' datasets.
+    :param return_reference_risks:
+        Set True to return the absolute risk estimates for each individual in the 'model_reference_dataset_path'
+        dataset.
+    """
+    pass
+
+
+def validate_absolute_risk_model(study_data_path: Union[str, pathlib.Path],
+                                 validate_for_total_follow_up_period: bool,
+                                 predicted_risk_interval: Union[int, List[int]],
+                                 icare_model_parameters: Optional[dict],
+                                 dataset_name: str = "Example dataset",
+                                 model_name: str = "Example risk prediction model") -> dict:
+    """
+    This function is used to validate the absolute risk models.
+
+    :param dataset_name:
+        Name of the validation dataset, e.g., "PLCO full cohort" or "Full cohort simulation".
+    :param model_name:
+        Name of the absolute risk model being validated, e.g., "Synthetic model" or "Simulation setting".
     """
     pass
