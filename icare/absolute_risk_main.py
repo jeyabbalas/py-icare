@@ -167,17 +167,82 @@ def compute_absolute_risk_split_interval(apply_age_start: Union[int, List[int]],
 
 
 def validate_absolute_risk_model(study_data_path: Union[str, pathlib.Path],
-                                 validate_for_total_follow_up_period: bool,
-                                 predicted_risk_interval: Union[int, List[int]],
-                                 icare_model_parameters: Optional[dict],
+                                 predicted_risk_interval: Union[str, int, List[int]],
+                                 icare_model_parameters: Optional[dict] = None,
+                                 predicted_risk_variable_name: Optional[str] = None,
+                                 linear_predictor_variable_name: Optional[str] = None,
+                                 reference_entry_age: Union[int, List[int], None] = None,
+                                 reference_exit_age: Union[int, List[int], None] = None,
+                                 reference_predicted_risks: Optional[List[float]] = None,
+                                 reference_linear_predictors: Optional[List[float]] = None,
+                                 number_of_percentiles: int = 10,
+                                 linear_predictor_cutoffs: Optional[List[float]] = None,
                                  dataset_name: str = "Example dataset",
                                  model_name: str = "Example risk prediction model") -> dict:
     """
-    This function is used to validate the absolute risk models.
+    This function is used to validate absolute risk models.
 
+    :param study_data_path:
+        A path to a CSV file containing the study data. The data must contain the following columns:
+            1) an optional id to identify each individual in the study,
+            2) the risk factors used in the absolute risk model being validated,
+            3) 'observed_outcome': the disease status { 0: censored; 1: disease occurred by the end of the follow-up
+                period },
+            4) 'study_entry_age': age (in years) when entering the cohort,
+            5) 'study_exit_age': age (in years) at last follow-up visit,
+            6) 'time_of_onset': time (in years) from study entry to disease onset; note that all subjects are
+                disease-free at the time of entry and those individuals who do not develop the disease by the end of
+                the follow-up period are considered censored, and this value is set to 'Inf'.
+            7) 'sampling_weights': for a case-control study nested within a cohort study, this is column is provided to
+                indicate the probability of the inclusion of that individual into the nested case-control study.
+    :param predicted_risk_interval:
+        If the risk validation is to be performed over the total follow-up period, set this parameter to the string
+        'total-followup'. Otherwise, it should be set to either an integer or a list of integers representing the
+        number of years after study entry over which, the estimated risk is being validated. Example: 5 for a 5-year
+        risk validation.
+    :param icare_model_parameters:
+        A dictionary containing the parameters of the absolute risk model to be validated. The keys of the dictionary
+        are the parameters of the 'compute_absolute_risk' function. If the risk prediction being validated is from a
+        method other than iCARE, this parameter should be set to None and the 'predicted_risk_variable_name' and
+        'linear_predictor_variable_name' parameters should be set to the names of the columns containing the risk
+        predictions and linear predictor values, respectively, in the study data.
+    :param predicted_risk_variable_name:
+        If the risk prediction is to be done by iCARE (i.e. using the compute_absolute_risk() method), set this value
+        to None. Else, supply the risk predictions for each individual in the study data, using some other method,
+        as an additional column in the study data. The name of that column should be supplied here as a string.
+    :param linear_predictor_variable_name:
+        The linear predictor is a risk score for an individual calculated as: Z * beta. Here, Z is a vector of risk
+        factor values for that individual and beta is a vector of log relative risks. If the linear predictor values are
+        to be calculated by iCARE (i.e. using the compute_absolute_risk() method), set this value to None. Else, supply
+        the linear predictor values for each individual in the study data as an additional column in the study data.
+        The name of that column should be supplied here.
+    :param reference_entry_age:
+        Specify an integer or a list of integers, representing the ages at entry for the reference population, to
+        compute their absolute risks. If both 'reference_predicted_risks' and 'reference_linear_predictors' are
+        provided, this parameter is ignored.
+    :param reference_exit_age:
+        Specify an integer or a list of integers, representing the ages at exit for the reference population, to
+        compute their absolute risks. If both 'reference_predicted_risks' and 'reference_linear_predictors' are
+        provided, this parameter is ignored.
+    :param reference_predicted_risks:
+        A list of absolute risk estimates for the reference population assuming the entry ages specified at
+        'reference_entry_age' and exit ages specified at 'reference_exit_age'. If both this parameter and
+        'reference_linear_predictors' are provided, they are not re-computed using the compute_absolute_risk() method.
+    :param reference_linear_predictors:
+        A list of linear predictor values for the reference population assuming the entry ages specified at
+        'reference_entry_age' and exit ages specified at 'reference_exit_age'. If both this parameter and
+        'reference_predicted_risks' are provided, they are not re-computed using the compute_absolute_risk() method.
+    :param number_of_percentiles:
+        The number of percentiles of the risk score that determines the number of strata over which, the risk
+        prediction model is to be validated.
+    :param linear_predictor_cutoffs:
+        A list of user specified cut-points for the linear predictor to define categories for absolute risk calibration
+        and relative risk calibration.
     :param dataset_name:
         Name of the validation dataset, e.g., "PLCO full cohort" or "Full cohort simulation".
     :param model_name:
         Name of the absolute risk model being validated, e.g., "Synthetic model" or "Simulation setting".
     """
+
+    # compute_absolute_risk(**icare_model_parameters)
     pass
