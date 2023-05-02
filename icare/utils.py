@@ -19,23 +19,11 @@ def read_file_to_dict(file: Union[str, pathlib.Path]) -> dict:
 
 
 def read_file_to_dataframe(file: Union[str, pathlib.Path], allow_integers: bool = True) -> pd.DataFrame:
-    with open(file, mode="r") as f:
-        header = f.readline().split(",")
-        first_row = f.readline().split(",")
+    df = pd.read_csv(file)
 
-    dtype = dict()
-    for variable, value in zip(header, first_row):
-        if (value.startswith('"') or value.startswith("'")) and \
-                (value.endswith('"') or value.endswith("'")):
-            dtype[variable] = object
-
-    df = pd.read_csv(file, dtype=dtype)
-
-    if not allow_integers:
-        for col in df.columns:
-            # to support nullable integer types
-            if np.issubdtype(df[col].dtype, int):
-                df[col] = df[col].astype(float)
+    if not allow_integers:  # to support nullable integer types
+        numeric_columns = df.select_dtypes(include=['number']).columns
+        df[numeric_columns] = df[numeric_columns].astype(float)
 
     if "id" in df.columns:
         df.set_index("id", inplace=True)
