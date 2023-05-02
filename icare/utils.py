@@ -20,12 +20,12 @@ def read_file_to_dict(file: Union[str, pathlib.Path]) -> dict:
 def read_file_to_dataframe(file: Union[str, pathlib.Path], allow_integers: bool = True) -> pd.DataFrame:
     df = pd.read_csv(file)
 
+    if "id" in df.columns:
+        df.set_index("id", inplace=True)
+
     if not allow_integers:  # to support nullable integer types
         numeric_columns = df.select_dtypes(include=['number']).columns
         df[numeric_columns] = df[numeric_columns].astype(float)
-
-    if "id" in df.columns:
-        df.set_index("id", inplace=True)
 
     return df
 
