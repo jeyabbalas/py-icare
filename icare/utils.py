@@ -1,8 +1,7 @@
 import json
 import pathlib
-from typing import Union, List, Tuple, Type
+from typing import Union, List, Tuple
 
-import numpy as np
 import pandas as pd
 
 from icare import check_errors
