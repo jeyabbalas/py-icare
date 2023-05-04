@@ -238,3 +238,34 @@ def check_rate_covers_all_ages(rates: pd.Series, age_start: List[int], age_inter
 def check_return_population_risks_type(return_reference_risks: bool) -> None:
     if not isinstance(return_reference_risks, bool):
         raise ValueError("ERROR: The 'return_reference_risks' input must be a boolean.")
+
+
+def check_validation_time_interval_type(predicted_risk_interval: Union[str, int, List[int]]) -> None:
+    if not isinstance(predicted_risk_interval, (str, int, list)):
+        raise ValueError("ERROR: The 'predicted_risk_interval' input must be a string or an integer or a list of "
+                         "integers.")
+
+    if isinstance(predicted_risk_interval, list):
+        if not all(isinstance(x, int) for x in predicted_risk_interval):
+            raise ValueError("ERROR: The 'predicted_risk_interval' input must be a list of integers.")
+
+    if isinstance(predicted_risk_interval, str):
+        if predicted_risk_interval != "total-followup":
+            raise ValueError("ERROR: The 'predicted_risk_interval' input must be either an integer or a list of "
+                             "integers or the string 'total-followup'.")
+
+
+def check_data_columns(study_data: pd.DataFrame, mandatory_columns: List[str]) -> None:
+    if not all([column in study_data.columns for column in mandatory_columns]):
+        print(f"Columns in 'study_data': {study_data.columns}")
+        raise ValueError(f"ERROR: The 'study_data' input must contain all the mandatory columns ({mandatory_columns}).")
+
+    if study_data[mandatory_columns].isna().any().any():
+        raise ValueError(f"ERROR: The columns ({mandatory_columns}) in 'study_data' input must not contain any missing "
+                         f"values.")
+
+
+def check_study_data(study_data: pd.DataFrame) -> None:
+    if (study_data['study_entry_age'] >= study_data['study_exit_age']).any():
+        raise ValueError("ERROR: The 'study_entry_age' column in the 'study_data' input must be lower than the "
+                         "'study_exit_age' column.")

@@ -1,4 +1,5 @@
 from icare.absolute_risk_model import AbsoluteRiskModel
+from icare.model_validation import ModelValidation
 
 
 def package_absolute_risk_results_to_dict(absolute_risk_model: AbsoluteRiskModel, return_linear_predictors: bool,
@@ -6,7 +7,7 @@ def package_absolute_risk_results_to_dict(absolute_risk_model: AbsoluteRiskModel
     results = dict()
 
     results["model"] = dict(zip(absolute_risk_model.population_distribution.columns.tolist(),
-                                    absolute_risk_model.beta_estimates.tolist()))
+                                absolute_risk_model.beta_estimates.tolist()))
 
     profile = absolute_risk_model.profile.copy(deep=True)
     if return_linear_predictors:
@@ -19,5 +20,15 @@ def package_absolute_risk_results_to_dict(absolute_risk_model: AbsoluteRiskModel
 
     if return_reference_risks:
         results["reference_risks"] = absolute_risk_model.results.population_risks_per_interval
+
+    return results
+
+
+def package_validation_results_to_dict(model_validation: ModelValidation) -> dict:
+    results = dict()
+
+    results["risk_prediction_interval"] = model_validation.timeframe
+    results["dataset_name"] = model_validation.dataset_name
+    results["model_name"] = model_validation.model_name
 
     return results

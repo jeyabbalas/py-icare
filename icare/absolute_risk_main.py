@@ -184,17 +184,16 @@ def validate_absolute_risk_model(study_data_path: Union[str, pathlib.Path],
 
     :param study_data_path:
         A path to a CSV file containing the study data. The data must contain the following columns:
-            1) an optional id to identify each individual in the study,
-            2) the risk factors used in the absolute risk model being validated,
-            3) 'observed_outcome': the disease status { 0: censored; 1: disease occurred by the end of the follow-up
+            1) 'observed_outcome': the disease status { 0: censored; 1: disease occurred by the end of the follow-up
                 period },
-            4) 'study_entry_age': age (in years) when entering the cohort,
-            5) 'study_exit_age': age (in years) at last follow-up visit,
-            6) 'time_of_onset': time (in years) from study entry to disease onset; note that all subjects are
+            2) 'study_entry_age': age (in years) when entering the cohort,
+            3) 'study_exit_age': age (in years) at last follow-up visit,
+            4) 'time_of_onset': time (in years) from study entry to disease onset; note that all subjects are
                 disease-free at the time of entry and those individuals who do not develop the disease by the end of
-                the follow-up period are considered censored, and this value is set to 'Inf'.
-            7) 'sampling_weights': for a case-control study nested within a cohort study, this is column is provided to
-                indicate the probability of the inclusion of that individual into the nested case-control study.
+                the follow-up period are considered censored, and this value is set to 'inf'.
+            5) 'sampling_weights': for a case-control study nested within a cohort study, this is column is provided to
+                indicate the probability of the inclusion of that individual into the nested case-control study. If the
+                study is not a nested case-control study, do not include this column in the study data.
     :param predicted_risk_interval:
         If the risk validation is to be performed over the total follow-up period, set this parameter to the string
         'total-followup'. Otherwise, it should be set to either an integer or a list of integers representing the
@@ -243,6 +242,13 @@ def validate_absolute_risk_model(study_data_path: Union[str, pathlib.Path],
     :param model_name:
         Name of the absolute risk model being validated, e.g., "Synthetic model" or "Simulation setting".
     """
+    from icare.model_validation import ModelValidation
 
     # compute_absolute_risk(**icare_model_parameters)
-    pass
+    model_validation = ModelValidation(study_data_path, predicted_risk_interval, icare_model_parameters,
+                                       predicted_risk_variable_name, linear_predictor_variable_name,
+                                       reference_entry_age, reference_exit_age, reference_predicted_risks,
+                                       reference_linear_predictors, number_of_percentiles, linear_predictor_cutoffs,
+                                       dataset_name, model_name)
+
+    return misc.package_validation_results_to_dict(model_validation)
