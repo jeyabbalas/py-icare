@@ -240,19 +240,31 @@ def check_return_population_risks_type(return_reference_risks: bool) -> None:
         raise ValueError("ERROR: The 'return_reference_risks' input must be a boolean.")
 
 
-def check_validation_time_interval_type(predicted_risk_interval: Union[str, int, List[int]]) -> None:
+def check_validation_time_interval_type(predicted_risk_interval: Union[str, int, List[int]],
+                                        study_data: pd.DataFrame) -> None:
     if not isinstance(predicted_risk_interval, (str, int, list)):
         raise ValueError("ERROR: The 'predicted_risk_interval' input must be a string or an integer or a list of "
                          "integers.")
-
-    if isinstance(predicted_risk_interval, list):
-        if not all(isinstance(x, int) for x in predicted_risk_interval):
-            raise ValueError("ERROR: The 'predicted_risk_interval' input must be a list of integers.")
 
     if isinstance(predicted_risk_interval, str):
         if predicted_risk_interval != "total-followup":
             raise ValueError("ERROR: The 'predicted_risk_interval' input must be either an integer or a list of "
                              "integers or the string 'total-followup'.")
+
+    if isinstance(predicted_risk_interval, int):
+        if predicted_risk_interval < 0:
+            raise ValueError("ERROR: The 'predicted_risk_interval' input must be a positive integer.")
+
+    if isinstance(predicted_risk_interval, list):
+        if not all(isinstance(x, int) for x in predicted_risk_interval):
+            raise ValueError("ERROR: The 'predicted_risk_interval' input must be a list of integers.")
+
+        if any([x < 0 for x in predicted_risk_interval]):
+            raise ValueError("ERROR: The 'predicted_risk_interval' input must be a list of positive integers.")
+
+        if len(predicted_risk_interval) != len(study_data):
+            raise ValueError("ERROR: The 'predicted_risk_interval' input must be a list of integers with the same "
+                             "length as the number of rows in the 'study_data' input.")
 
 
 def check_data_columns(study_data: pd.DataFrame, mandatory_columns: List[str]) -> None:
