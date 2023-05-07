@@ -5,30 +5,33 @@ from icare import misc
 from icare.absolute_risk_model import AbsoluteRiskModel
 
 
-def compute_absolute_risk(apply_age_start: Union[int, List[int]],
-                          apply_age_interval_length: Union[int, List[int]],
-                          model_disease_incidence_rates_path: Union[str, pathlib.Path],
-                          model_competing_incidence_rates_path: Union[str, pathlib.Path, None] = None,
-                          model_covariate_formula_path: Union[str, pathlib.Path, None] = None,
-                          model_log_relative_risk_path: Union[str, pathlib.Path, None] = None,
-                          model_reference_dataset_path: Union[str, pathlib.Path, None] = None,
-                          model_reference_dataset_weights_variable_name: Optional[str] = None,
-                          model_snp_info_path: Union[str, pathlib.Path, None] = None,
-                          model_family_history_variable_name: Optional[str] = None,
-                          num_imputations: int = 5,
-                          apply_covariate_profile_path: Union[str, pathlib.Path, None] = None,
-                          apply_snp_profile_path: Union[str, pathlib.Path, None] = None,
-                          return_linear_predictors: bool = False,
-                          return_reference_risks: bool = False) -> dict:
+def compute_absolute_risk(
+        apply_age_start: Union[int, List[int]],
+        apply_age_interval_length: Union[int, List[int]],
+        model_disease_incidence_rates_path: Union[str, pathlib.Path],
+        model_competing_incidence_rates_path: Union[str, pathlib.Path, None] = None,
+        model_covariate_formula_path: Union[str, pathlib.Path, None] = None,
+        model_log_relative_risk_path: Union[str, pathlib.Path, None] = None,
+        model_reference_dataset_path: Union[str, pathlib.Path, None] = None,
+        model_reference_dataset_weights_variable_name: Optional[str] = None,
+        model_snp_info_path: Union[str, pathlib.Path, None] = None,
+        model_family_history_variable_name: Optional[str] = None,
+        num_imputations: int = 5,
+        apply_covariate_profile_path: Union[str, pathlib.Path, None] = None,
+        apply_snp_profile_path: Union[str, pathlib.Path, None] = None,
+        return_linear_predictors: bool = False,
+        return_reference_risks: bool = False) -> dict:
     """
     This function is used to build absolute risk models and apply them to estimate absolute risks.
 
-    :param apply_age_start: Age(s) for the start of the interval, over which, to compute the absolute risk. If a single
+    :param apply_age_start:
+        Age(s) for the start of the interval, over which, to compute the absolute risk. If a single
         integer is provided, all instances in the profiles ('apply_covariate_profile_path' and/or
         'apply_snp_profile_path') are assigned this start age for the interval. If a different start age needs to be
         assigned for each instance, provide a list of ages as integers of the same length as the number of instances in
         these profiles.
-    :param apply_age_interval_length: Number of years over which to compute the absolute risk. That is to say that the
+    :param apply_age_interval_length:
+        Number of years over which to compute the absolute risk. That is to say that the
         age at the end of the interval is 'apply_age_start' + 'apply_age_interval_length'. If a single integer is
         provided, all instances in the profiles ('apply_covariate_profile_path' and/or 'apply_snp_profile_path') are
         assigned this interval length. If a different interval length needs to be assigned for each instance, provide a
@@ -128,34 +131,111 @@ def compute_absolute_risk(apply_age_start: Union[int, List[int]],
                                                       return_reference_risks)
 
 
-def compute_absolute_risk_split_interval(apply_age_start: Union[int, List[int]],
-                                         apply_age_interval_length: Union[int, List[int]],
-                                         apply_cov_profile,
-                                         model_formula,
-                                         model_disease_incidence_rates,
-                                         model_log_rr,
-                                         model_ref_dataset,
-                                         model_cov_info,
-                                         model_ref_dataset_weights=None,
-                                         model_competing_incidence_rates=None,
-                                         apply_snp_profile=None,
-                                         model_snp_info=None,
-                                         model_bin_fh_name=None,
-                                         cut_time=None,
-                                         apply_cov_profile_2=None,
-                                         model_formula_2=None,
-                                         model_log_rr_2=None,
-                                         model_ref_dataset_2=None,
-                                         model_ref_dataset_weights_2=None,
-                                         model_cov_info_2=None,
-                                         model_bin_fh_name_2=None,
-                                         num_imputations=5,
-                                         return_linear_predictors: bool = False,
-                                         return_reference_risks: bool = False) -> dict:
+def compute_absolute_risk_split_interval(
+        apply_age_start: Union[int, List[int]],
+        apply_age_interval_length: Union[int, List[int]],
+        model_disease_incidence_rates_path: Union[str, pathlib.Path],
+        model_competing_incidence_rates_path: Union[str, pathlib.Path, None] = None,
+        model_covariate_formula_before_cutpoint_path: Union[str, pathlib.Path, None] = None,
+        model_covariate_formula_after_cutpoint_path: Union[str, pathlib.Path, None] = None,
+        model_log_relative_risk_before_cutpoint_path: Union[str, pathlib.Path, None] = None,
+        model_log_relative_risk_after_cutpoint_path: Union[str, pathlib.Path, None] = None,
+        model_reference_dataset_before_cutpoint_path: Union[str, pathlib.Path, None] = None,
+        model_reference_dataset_after_cutpoint_path: Union[str, pathlib.Path, None] = None,
+        model_reference_dataset_weights_variable_name_before_cutpoint: Optional[str] = None,
+        model_reference_dataset_weights_variable_name_after_cutpoint: Optional[str] = None,
+        model_snp_info_path: Union[str, pathlib.Path, None] = None,
+        model_family_history_variable_name_before_cutpoint: Optional[str] = None,
+        model_family_history_variable_name_after_cutpoint: Optional[str] = None,
+        apply_covariate_profile_before_cutpoint_path: Union[str, pathlib.Path, None] = None,
+        apply_covariate_profile_after_cutpoint_path: Union[str, pathlib.Path, None] = None,
+        apply_snp_profile_path: Union[str, pathlib.Path, None] = None,
+        cutpoint: Optional[int] = None,
+        num_imputations: int = 5,
+        return_linear_predictors: bool = False,
+        return_reference_risks: bool = False) -> dict:
     """
     This function is used to build an absolute risk model that incorporates different input parameters before and after
-        a given time point. The model is then applied to estimate absolute risks.
+        a given time cut-point. The model is then applied to estimate absolute risks.
 
+    :param apply_age_start:
+        Age(s) for the start of the interval, over which, to compute the absolute risk. If a single
+        integer is provided, all instances in the profiles ('apply_covariate_profile_path' and/or
+        'apply_snp_profile_path') are assigned this start age for the interval. If a different start age needs to be
+        assigned for each instance, provide a list of ages as integers of the same length as the number of instances in
+        these profiles.
+    :param apply_age_interval_length:
+        Number of years over which to compute the absolute risk. That is to say that the
+        age at the end of the interval is 'apply_age_start' + 'apply_age_interval_length'. If a single integer is
+        provided, all instances in the profiles ('apply_covariate_profile_path' and/or 'apply_snp_profile_path') are
+        assigned this interval length. If a different interval length needs to be assigned for each instance, provide a
+        list of interval lengths as integers of the same length as the number of instances in these profiles.
+    :param model_disease_incidence_rates_path:
+        A path to a CSV file containing the age-specific disease incidence rates for the population of interest. The
+        data in the file must either contain two columns, named: ['age', 'rate'], to specify the incidence rates
+        associated with each age group; or three columns, named: ['start_age', 'end_age', 'rate'], to specify the
+        incidence rates associated with each age interval. The age ranges must fully cover the age intervals specified
+        using parameters 'apply_age_start' and 'apply_age_interval_length'.
+    :param model_competing_incidence_rates_path:
+        A path to a CSV file containing the age-specific incidence rates for competing events in the population of
+        interest. The data in the file must either contain two columns, named: ['age', 'rate'], to specify the
+        incidence rates associated with each age group; or three columns, named: ['start_age', 'end_age', 'rate'], to
+        specify the incidence rates associated with each age interval. The age ranges must fully cover the age
+        intervals specified using parameters 'apply_age_start' and 'apply_age_interval_length'.
+    :param model_covariate_formula_before_cutpoint_path:
+        A path to a text file containing the covariate formula for the model to be fit before the cut-point. The text
+        should contain a string description of the covariate formula using the Patsy symbolic description language.
+        Reference: https://patsy.readthedocs.io/en/latest/formulas.html#the-formula-language
+    :param model_covariate_formula_after_cutpoint_path:
+        A path to a text file containing the covariate formula for the model to be fit after the cut-point. The text
+        should contain a string description of the covariate formula using the Patsy symbolic description language.
+        Reference: https://patsy.readthedocs.io/en/latest/formulas.html#the-formula-language
+    :param model_log_relative_risk_before_cutpoint_path:
+        A path to a JSON file containing the log odds ratios, of the variables in the model except the intercept term,
+        in association with the disease, for the model to be fit before the cut-point. The JSON file should contain a
+        dictionary with the variable names as keys and the log odds ratios as values.
+    :param model_log_relative_risk_after_cutpoint_path:
+        A path to a JSON file containing the log odds ratios, of the variables in the model except the intercept term,
+        in association with the disease, for the model to be fit after the cut-point. The JSON file should contain a
+        dictionary with the variable names as keys and the log odds ratios as values.
+    :param model_reference_dataset_before_cutpoint_path:
+        A path to a CSV file containing the reference dataset with risk factor distribution that is representative of
+        the population of interest before the cut-point.
+    :param model_reference_dataset_after_cutpoint_path:
+        A path to a CSV file containing the reference dataset with risk factor distribution that is representative of
+        the population of interest after the cut-point.
+    :param model_reference_dataset_weights_variable_name_before_cutpoint:
+        A string specifying the name of the variable in the dataset at 'model_reference_dataset_before_cutpoint_path'
+        that contains the sampling weights for each individual.
+    :param model_reference_dataset_weights_variable_name_after_cutpoint:
+        A string specifying the name of the variable in the dataset at 'model_reference_dataset_after_cutpoint_path'
+        that contains the sampling weights for each individual.
+    :param model_snp_info_path:
+        A path to a CSV file containing the information about the SNPs in the model. The data should contain three
+        columns, named: ['snp_name', 'snp_odds_ratio', 'snp_freq'] corresponding to the SNP ID, the odds ratio of the
+        SNP in association with the disease, and the minor allele frequency, respectively.
+    :param model_family_history_variable_name_before_cutpoint:
+        A string specifying the name of the binary variable (values: {0, 1}; missing values are permitted) in the
+        dataset at 'model_reference_dataset_before_cutpoint_path' that indicates whether the individual has a family
+        history of the disease.
+    :param model_family_history_variable_name_after_cutpoint:
+        A string specifying the name of the binary variable (values: {0, 1}; missing values are permitted) in the
+        dataset at 'model_reference_dataset_after_cutpoint_path' that indicates whether the individual has a family
+        history of the disease.
+    :param apply_covariate_profile_before_cutpoint_path:
+        A path to a CSV file containing the covariate (risk factor) profiles of the individuals for whom the absolute
+        risk is to be computed before the cut-point.
+    :param apply_covariate_profile_after_cutpoint_path:
+        A path to a CSV file containing the covariate (risk factor) profiles of the individuals for whom the absolute
+        risk is to be computed after the cut-point.
+    :param apply_snp_profile_path:
+        A path to a CSV file containing the SNP profiles (values: {0: homozygous reference alleles, 1: heterozygous,
+        2: homozygous alternate alleles}) of the individuals for whom the absolute risk is to be computed. Missing
+        values are permitted.
+    :param cutpoint:
+        Integer age using which the absolute risk computation is split into before and after the cut-point.
+    :param num_imputations:
+        The number of imputations for handling missing SNPs.
     :param return_linear_predictors:
         Set True to return the calculated linear predictor values for each individual in the
         'apply_covariate_profile_path' and/or 'apply_snp_profile_path' datasets.
@@ -163,22 +243,24 @@ def compute_absolute_risk_split_interval(apply_age_start: Union[int, List[int]],
         Set True to return the absolute risk estimates for each individual in the 'model_reference_dataset_path'
         dataset.
     """
+
     pass
 
 
-def validate_absolute_risk_model(study_data_path: Union[str, pathlib.Path],
-                                 predicted_risk_interval: Union[str, int, List[int]],
-                                 icare_model_parameters: Optional[dict] = None,
-                                 predicted_risk_variable_name: Optional[str] = None,
-                                 linear_predictor_variable_name: Optional[str] = None,
-                                 reference_entry_age: Union[int, List[int], None] = None,
-                                 reference_exit_age: Union[int, List[int], None] = None,
-                                 reference_predicted_risks: Optional[List[float]] = None,
-                                 reference_linear_predictors: Optional[List[float]] = None,
-                                 number_of_percentiles: int = 10,
-                                 linear_predictor_cutoffs: Optional[List[float]] = None,
-                                 dataset_name: str = "Example dataset",
-                                 model_name: str = "Example risk prediction model") -> dict:
+def validate_absolute_risk_model(
+        study_data_path: Union[str, pathlib.Path],
+        predicted_risk_interval: Union[str, int, List[int]],
+        icare_model_parameters: Optional[dict] = None,
+        predicted_risk_variable_name: Optional[str] = None,
+        linear_predictor_variable_name: Optional[str] = None,
+        reference_entry_age: Union[int, List[int], None] = None,
+        reference_exit_age: Union[int, List[int], None] = None,
+        reference_predicted_risks: Optional[List[float]] = None,
+        reference_linear_predictors: Optional[List[float]] = None,
+        number_of_percentiles: int = 10,
+        linear_predictor_cutoffs: Optional[List[float]] = None,
+        dataset_name: str = "Example dataset",
+        model_name: str = "Example risk prediction model") -> dict:
     """
     This function is used to validate absolute risk models.
 
