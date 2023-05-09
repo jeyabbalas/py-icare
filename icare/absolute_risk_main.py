@@ -116,6 +116,9 @@ def compute_absolute_risk(
                 contain a list of dictionaries, one per unique combination of the specified age intervals, containing
                 age at the start of interval ('age_interval_start'), age at the end of interval ('age_interval_end'),
                 and a list absolute risk estimates for the individuals in the reference dataset ('population_risks').
+            4) 'method':
+                A string containing the name of the method used to calculate the absolute risk estimates. When this
+                method is used, the method name is "iCARE - absolute risk".
     """
 
     absolute_risk_model = AbsoluteRiskModel(
@@ -128,7 +131,7 @@ def compute_absolute_risk(
     absolute_risk_model.compute_absolute_risks()
 
     return misc.package_absolute_risk_results_to_dict(absolute_risk_model, return_linear_predictors,
-                                                      return_reference_risks)
+                                                      return_reference_risks, 'iCARE - absolute risk')
 
 
 def compute_absolute_risk_split_interval(
@@ -243,8 +246,129 @@ def compute_absolute_risk_split_interval(
         Set True to return the absolute risk estimates for each individual in the 'model_reference_dataset_path'
         dataset.
     """
+    from icare import check_errors
 
-    pass
+    run_split_interval_parameters = [
+        cutpoint, model_covariate_formula_after_cutpoint_path, model_log_relative_risk_after_cutpoint_path,
+        model_reference_dataset_after_cutpoint_path, apply_covariate_profile_after_cutpoint_path
+    ]
+    run_split_interval = any([x is not None for x in run_split_interval_parameters])
+
+    if run_split_interval:
+        check_errors.check_cutpoint_and_age_intervals(cutpoint, apply_age_start, apply_age_interval_length)
+
+        age_start_before_cutpoint = apply_age_start
+        if isinstance(apply_age_start, int):
+            start_to_cutpoint = cutpoint - apply_age_start
+            age_interval_length_before_cutpoint = start_to_cutpoint if start_to_cutpoint < apply_age_interval_length \
+                else apply_age_interval_length
+            age_interval_length_before_cutpoint = max(age_interval_length_before_cutpoint, 0)
+
+            age_start_after_cutpoint = age_start_before_cutpoint + age_interval_length_before_cutpoint
+            age_interval_length_after_cutpoint = apply_age_start + apply_age_interval_length - age_start_after_cutpoint
+        else:
+            age_interval_length_before_cutpoint = [
+                max(min(cutpoint - start, interval), 0)
+                for start, interval in zip(apply_age_start, apply_age_interval_length)
+            ]
+
+            age_start_after_cutpoint = [
+                start + interval
+                for start, interval in zip(age_start_before_cutpoint, age_interval_length_before_cutpoint)
+            ]
+
+            age_interval_length_after_cutpoint = [
+                start + interval - start_after_cutpoint
+                for start, interval, start_after_cutpoint
+                in zip(apply_age_start, apply_age_interval_length, age_start_after_cutpoint)
+            ]
+
+        before_cutpoint_parameters = [
+            model_covariate_formula_before_cutpoint_path, model_log_relative_risk_before_cutpoint_path,
+            model_reference_dataset_before_cutpoint_path, apply_covariate_profile_before_cutpoint_path,
+            model_reference_dataset_weights_variable_name_before_cutpoint,
+            model_family_history_variable_name_before_cutpoint
+        ]
+        after_cutpoint_parameters = [
+            model_covariate_formula_after_cutpoint_path, model_log_relative_risk_after_cutpoint_path,
+            model_reference_dataset_after_cutpoint_path, apply_covariate_profile_after_cutpoint_path,
+            model_reference_dataset_weights_variable_name_after_cutpoint,
+            model_family_history_variable_name_after_cutpoint
+        ]
+
+        # If any of the parameters for the after cut-point model is None, use the corresponding parameter from the
+        # before cut-point model
+        for i, (before_parameter, after_parameter) in enumerate(
+                zip(before_cutpoint_parameters, after_cutpoint_parameters)):
+            if after_parameter is None:
+                after_cutpoint_parameters[i] = before_parameter
+
+        (model_covariate_formula_after_cutpoint_path, model_log_relative_risk_after_cutpoint_path,
+         model_reference_dataset_after_cutpoint_path, apply_covariate_profile_after_cutpoint_path,
+         model_reference_dataset_weights_variable_name_after_cutpoint,
+         model_family_history_variable_name_after_cutpoint) = after_cutpoint_parameters
+
+        results_before_cutpoint = compute_absolute_risk(
+            apply_age_start=age_start_before_cutpoint,
+            apply_age_interval_length=age_interval_length_before_cutpoint,
+            model_disease_incidence_rates_path=model_disease_incidence_rates_path,
+            model_competing_incidence_rates_path=model_competing_incidence_rates_path,
+            model_covariate_formula_path=model_covariate_formula_before_cutpoint_path,
+            model_log_relative_risk_path=model_log_relative_risk_before_cutpoint_path,
+            model_reference_dataset_path=model_reference_dataset_before_cutpoint_path,
+            model_reference_dataset_weights_variable_name=model_reference_dataset_weights_variable_name_before_cutpoint,
+            model_snp_info_path=model_snp_info_path,
+            model_family_history_variable_name=model_family_history_variable_name_before_cutpoint,
+            apply_covariate_profile_path=apply_covariate_profile_before_cutpoint_path,
+            apply_snp_profile_path=apply_snp_profile_path,
+            num_imputations=num_imputations,
+            return_linear_predictors=return_linear_predictors,
+            return_reference_risks=return_reference_risks
+        )
+
+        results_after_cutpoint = compute_absolute_risk(
+            apply_age_start=age_start_after_cutpoint,
+            apply_age_interval_length=age_interval_length_after_cutpoint,
+            model_disease_incidence_rates_path=model_disease_incidence_rates_path,
+            model_competing_incidence_rates_path=model_competing_incidence_rates_path,
+            model_covariate_formula_path=model_covariate_formula_after_cutpoint_path,
+            model_log_relative_risk_path=model_log_relative_risk_after_cutpoint_path,
+            model_reference_dataset_path=model_reference_dataset_after_cutpoint_path,
+            model_reference_dataset_weights_variable_name=model_reference_dataset_weights_variable_name_after_cutpoint,
+            model_snp_info_path=model_snp_info_path,
+            model_family_history_variable_name=model_family_history_variable_name_after_cutpoint,
+            apply_covariate_profile_path=apply_covariate_profile_after_cutpoint_path,
+            apply_snp_profile_path=apply_snp_profile_path,
+            num_imputations=num_imputations,
+            return_linear_predictors=return_linear_predictors,
+            return_reference_risks=return_reference_risks
+        )
+
+        results = misc.combine_split_absolute_risk_results(
+            results_before_cutpoint, results_after_cutpoint,
+            return_linear_predictors, return_reference_risks,
+            f"iCARE - absolute risk with split intervals at {cutpoint} years"
+        )
+    else:
+        results = compute_absolute_risk(
+            apply_age_start=apply_age_start,
+            apply_age_interval_length=apply_age_interval_length,
+            model_disease_incidence_rates_path=model_disease_incidence_rates_path,
+            model_competing_incidence_rates_path=model_competing_incidence_rates_path,
+            model_covariate_formula_path=model_covariate_formula_before_cutpoint_path,
+            model_log_relative_risk_path=model_log_relative_risk_before_cutpoint_path,
+            model_reference_dataset_path=model_reference_dataset_before_cutpoint_path,
+            model_reference_dataset_weights_variable_name=model_reference_dataset_weights_variable_name_before_cutpoint,
+            model_snp_info_path=model_snp_info_path,
+            model_family_history_variable_name=model_family_history_variable_name_before_cutpoint,
+            apply_covariate_profile_path=apply_covariate_profile_before_cutpoint_path,
+            apply_snp_profile_path=apply_snp_profile_path,
+            num_imputations=num_imputations,
+            return_linear_predictors=return_linear_predictors,
+            return_reference_risks=return_reference_risks
+        )
+
+    return results
 
 
 def validate_absolute_risk_model(
