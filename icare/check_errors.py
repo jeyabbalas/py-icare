@@ -1,4 +1,4 @@
-from typing import Union, List
+from typing import Union, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -9,9 +9,7 @@ def check_snp_info(model_snp_info: pd.DataFrame) -> None:
         raise ValueError("ERROR: 'model_snp_info_path' must have columns 'snp_name', 'snp_odds_ratio', and 'snp_freq'.")
 
 
-def check_age_interval_types(
-        age_start: Union[int, List[int]],
-        age_interval_length: Union[int, List[int]]) -> None:
+def check_age_interval_types(age_start: Union[int, List[int]], age_interval_length: Union[int, List[int]]) -> None:
     if not isinstance(age_start, int) and not isinstance(age_start, list):
         raise ValueError("ERROR: The argument 'apply_age_start' must be an integer or a list of integers.")
 
@@ -240,6 +238,49 @@ def check_return_population_risks_type(return_reference_risks: bool) -> None:
         raise ValueError("ERROR: The 'return_reference_risks' input must be a boolean.")
 
 
+def check_cutpoint_and_age_intervals(cutpoint: Optional[int], age_start: Union[int, List[int]],
+                                     age_interval_length: Union[int, List[int]]):
+    if cutpoint is None:
+        raise ValueError("ERROR: If you wish to use different model inputs over parts of the age interval, you must "
+                         "specify a 'cutpoint' input.")
+
+    if not isinstance(cutpoint, int):
+        raise ValueError("ERROR: The 'cutpoint' input must be an integer age.")
+
+    check_age_interval_types(age_start, age_interval_length)
+
+    if (isinstance(age_start, int) and not isinstance(age_interval_length, int)) or \
+            (not isinstance(age_start, int) and isinstance(age_interval_length, int)):
+        raise ValueError("ERROR: If one of 'age_start' and 'age_interval_length' is an integer, the other must also "
+                         "be an integer.")
+
+    if (isinstance(age_start, list) and not isinstance(age_interval_length, list)) or \
+            (not isinstance(age_start, list) and isinstance(age_interval_length, list)):
+        raise ValueError("ERROR: If one of 'age_start' and 'age_interval_length' is a list, the other must also "
+                         "be a list.")
+
+    if isinstance(age_start, list) and len(age_start) != len(age_interval_length):
+        raise ValueError("ERROR: If 'apply_age_start' and 'apply_age_interval_length' are lists, they must be of equal "
+                         "length.")
+
+    correct_intervals = False
+    if isinstance(age_start, int):
+        if cutpoint < age_start or cutpoint > age_start + age_interval_length:
+            correct_intervals = True
+    else:
+        if any([cutpoint < start for start in age_start]) or \
+                any([cutpoint > start + length for start, length in zip(age_start, age_interval_length)]):
+            correct_intervals = True
+
+    if correct_intervals:
+        print("\nNote: You provided 'cutpoint' outside the age-range defined by 'apply_age_start' and "
+              "'apply_age_interval_length'.\n")
+        print("iCARE will compute the risks after making corrections to the cut-point. If for an individual the "
+              "cut-point lies below the `apply_age_start`, the cut-point is set to `apply_age_start`. If the "
+              "cut-point lies after `apply_age_start` + `apply_age_interval_length`, then the cut-point is set to "
+              "`apply_age_start` + `apply_age_interval_length`.\n")
+
+
 def check_validation_time_interval_type(predicted_risk_interval: Union[str, int, List[int]],
                                         study_data: pd.DataFrame) -> None:
     if not isinstance(predicted_risk_interval, (str, int, list)):
@@ -267,13 +308,24 @@ def check_validation_time_interval_type(predicted_risk_interval: Union[str, int,
                              "length as the number of rows in the 'study_data' input.")
 
 
-def check_data_columns(study_data: pd.DataFrame, mandatory_columns: List[str]) -> None:
+def check_data_mandatory_columns(study_data: pd.DataFrame, mandatory_columns: List[str]) -> None:
     if not all([column in study_data.columns for column in mandatory_columns]):
         print(f"Columns in 'study_data': {study_data.columns}")
         raise ValueError(f"ERROR: The 'study_data' input must contain all the mandatory columns ({mandatory_columns}).")
 
     if study_data[mandatory_columns].isna().any().any():
         raise ValueError(f"ERROR: The columns ({mandatory_columns}) in 'study_data' input must not contain any missing "
+                         f"values.")
+
+
+def check_data_optional_columns(study_data: pd.DataFrame, optional_columns: List[str]) -> None:
+    if not all([column in study_data.columns for column in optional_columns]):
+        print(f"Columns in 'study_data': {study_data.columns}")
+        raise ValueError(f"ERROR: It appears like you meant to supply the optional columns ({optional_columns}) with "
+                         f"'study_data' but it was not included in the input dataset.")
+
+    if study_data[optional_columns].isna().any().any():
+        raise ValueError(f"ERROR: The columns ({optional_columns}) in 'study_data' input must not contain any missing "
                          f"values.")
 
 
