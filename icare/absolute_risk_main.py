@@ -255,6 +255,7 @@ def compute_absolute_risk_split_interval(
     run_split_interval = any([x is not None for x in run_split_interval_parameters])
 
     if run_split_interval:
+        # Calculate age intervals before and after the cut-point
         check_errors.check_cutpoint_and_age_intervals(cutpoint, apply_age_start, apply_age_interval_length)
 
         age_start_before_cutpoint = apply_age_start
@@ -308,6 +309,7 @@ def compute_absolute_risk_split_interval(
          model_reference_dataset_weights_variable_name_after_cutpoint,
          model_family_history_variable_name_after_cutpoint) = after_cutpoint_parameters
 
+        # Compute absolute risk before and after the cut-point, then combine the results
         results_before_cutpoint = compute_absolute_risk(
             apply_age_start=age_start_before_cutpoint,
             apply_age_interval_length=age_interval_length_before_cutpoint,
