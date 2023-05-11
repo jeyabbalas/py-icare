@@ -299,7 +299,8 @@ class AbsoluteRiskModel:
                  num_imputations: int,
                  covariate_profile_path: Union[str, pathlib.Path, None],
                  snp_profile_path: Union[str, pathlib.Path, None],
-                 return_reference_risks: bool) -> None:
+                 return_reference_risks: bool,
+                 seed: Optional[int] = None) -> None:
         covariate_model: Optional[CovariateModel] = None
         snp_model: Optional[SnpModel] = None
         self.num_imputations = 1
@@ -327,7 +328,7 @@ class AbsoluteRiskModel:
 
             snp_model = SnpModel(
                 snp_info_path, snp_profile_path, model_family_history_variable_name, self.age_start,
-                self.age_interval_length, self.num_imputations, covariate_model)
+                self.age_interval_length, self.num_imputations, covariate_model, seed)
 
             if covariate_model is None:
                 self.age_start = snp_model.age_start

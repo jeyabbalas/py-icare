@@ -20,7 +20,8 @@ def compute_absolute_risk(
         apply_covariate_profile_path: Union[str, pathlib.Path, None] = None,
         apply_snp_profile_path: Union[str, pathlib.Path, None] = None,
         return_linear_predictors: bool = False,
-        return_reference_risks: bool = False) -> dict:
+        return_reference_risks: bool = False,
+        seed: Optional[int] = None) -> dict:
     """
     This function is used to build absolute risk models and apply them to estimate absolute risks.
 
@@ -94,6 +95,8 @@ def compute_absolute_risk(
     :param return_reference_risks:
         Set True to return the absolute risk estimates for each individual in the 'model_reference_dataset_path'
         dataset.
+    :param seed:
+        Fix a seed for reproducibility.
     :return:
         A dictionary with the following keys—
             1) 'model':
@@ -126,7 +129,7 @@ def compute_absolute_risk(
         model_snp_info_path, model_log_relative_risk_path, model_reference_dataset_path,
         model_reference_dataset_weights_variable_name, model_competing_incidence_rates_path,
         model_family_history_variable_name, num_imputations, apply_covariate_profile_path, apply_snp_profile_path,
-        return_reference_risks)
+        return_reference_risks, seed)
 
     absolute_risk_model.compute_absolute_risks()
 
@@ -156,7 +159,8 @@ def compute_absolute_risk_split_interval(
         cutpoint: Union[int, List[int], None] = None,
         num_imputations: int = 5,
         return_linear_predictors: bool = False,
-        return_reference_risks: bool = False) -> dict:
+        return_reference_risks: bool = False,
+        seed: Optional[int] = None) -> dict:
     """
     This function is used to build an absolute risk model that incorporates different input parameters before and after
         a given time cut-point. The model is then applied to estimate the combined absolute risks.
@@ -368,7 +372,8 @@ def compute_absolute_risk_split_interval(
             apply_snp_profile_path=apply_snp_profile_path,
             num_imputations=num_imputations,
             return_linear_predictors=return_linear_predictors,
-            return_reference_risks=return_reference_risks
+            return_reference_risks=return_reference_risks,
+            seed=seed
         )
 
         results_after_cutpoint = compute_absolute_risk(
@@ -386,7 +391,8 @@ def compute_absolute_risk_split_interval(
             apply_snp_profile_path=apply_snp_profile_path,
             num_imputations=num_imputations,
             return_linear_predictors=return_linear_predictors,
-            return_reference_risks=return_reference_risks
+            return_reference_risks=return_reference_risks,
+            seed=seed
         )
 
         results = misc.combine_split_absolute_risk_results(
@@ -410,7 +416,8 @@ def compute_absolute_risk_split_interval(
             apply_snp_profile_path=apply_snp_profile_path,
             num_imputations=num_imputations,
             return_linear_predictors=return_linear_predictors,
-            return_reference_risks=return_reference_risks
+            return_reference_risks=return_reference_risks,
+            seed=seed
         )
 
     return results
@@ -429,7 +436,8 @@ def validate_absolute_risk_model(
         number_of_percentiles: int = 10,
         linear_predictor_cutoffs: Optional[List[float]] = None,
         dataset_name: str = "Example dataset",
-        model_name: str = "Example risk prediction model") -> dict:
+        model_name: str = "Example risk prediction model",
+        seed: Optional[int] = None) -> dict:
     """
     This function is used to validate absolute risk models.
 
@@ -492,6 +500,8 @@ def validate_absolute_risk_model(
         Name of the validation dataset, e.g., "PLCO full cohort" or "Full cohort simulation".
     :param model_name:
         Name of the absolute risk model being validated, e.g., "Synthetic model" or "Simulation setting".
+    :param seed:
+        Fix a seed for reproducibility.
     """
     from icare.model_validation import ModelValidation
 
@@ -500,6 +510,6 @@ def validate_absolute_risk_model(
                                        predicted_risk_variable_name, linear_predictor_variable_name,
                                        reference_entry_age, reference_exit_age, reference_predicted_risks,
                                        reference_linear_predictors, number_of_percentiles, linear_predictor_cutoffs,
-                                       dataset_name, model_name)
+                                       dataset_name, model_name, seed)
 
     return misc.package_validation_results_to_dict(model_validation)

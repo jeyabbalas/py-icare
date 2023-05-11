@@ -61,7 +61,7 @@ class FamilyHistory:
 
 
 def simulate_snps(snp_names: List[str], betas: np.ndarray, frequencies: np.ndarray,
-                  family_history: np.ndarray) -> pd.DataFrame:
+                  family_history: np.ndarray, seed: Optional[int] = None) -> pd.DataFrame:
     """
     Simulate SNPs using the given SNP allele frequencies, log odds ratios, and family history information.
 
@@ -86,7 +86,7 @@ def simulate_snps(snp_names: List[str], betas: np.ndarray, frequencies: np.ndarr
     genotype_distribution_fh_yes = numerator / denominator
 
     # sample genotypes
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(seed)
     fh_yes = family_history.astype(int) == 1
     fh_no = ~fh_yes
 
@@ -135,7 +135,8 @@ class SnpModel:
                  age_start: Union[int, List[int]],
                  age_interval_length: Union[int, List[int]],
                  num_imputations: int,
-                 covariate_model: Optional[CovariateModel]) -> None:
+                 covariate_model: Optional[CovariateModel],
+                 seed: Optional[int] = None) -> None:
         snp_names, betas, frequencies = extract_snp_info(info_path)
 
         self._set_z_profile(profile_path, age_start, snp_names, covariate_model)
@@ -144,7 +145,7 @@ class SnpModel:
             age_start, age_interval_length, len(self.z_profile), "apply_snp_profile_path")
         self._set_family_history(covariate_model, family_history_variable_name)
 
-        self._set_population_distribution(covariate_model, snp_names, betas, frequencies, num_imputations)
+        self._set_population_distribution(covariate_model, snp_names, betas, frequencies, num_imputations, seed)
         self._set_population_weights(covariate_model, num_imputations)
         self._set_beta_estimates(covariate_model, betas, frequencies)
 
@@ -191,9 +192,9 @@ class SnpModel:
                                             self.DEFAULT_NUM_SAMPLES_IMPUTED)
 
     def _set_population_distribution(self, covariate_model: CovariateModel, snp_names: List[str], betas: np.ndarray,
-                                     frequencies: np.ndarray, num_imputations: int) -> None:
+                                     frequencies: np.ndarray, num_imputations: int, seed: Optional[int] = None) -> None:
         population_fh = np.tile(self.family_history.population, num_imputations)
-        self.population_distribution = simulate_snps(snp_names, betas, frequencies, population_fh)
+        self.population_distribution = simulate_snps(snp_names, betas, frequencies, population_fh, seed)
 
         if covariate_model is not None:
             stacked_population_distribution = np.tile(covariate_model.population_distribution, (num_imputations, 1))
