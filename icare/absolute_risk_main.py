@@ -153,26 +153,27 @@ def compute_absolute_risk_split_interval(
         apply_covariate_profile_before_cutpoint_path: Union[str, pathlib.Path, None] = None,
         apply_covariate_profile_after_cutpoint_path: Union[str, pathlib.Path, None] = None,
         apply_snp_profile_path: Union[str, pathlib.Path, None] = None,
-        cutpoint: Optional[int] = None,
+        cutpoint: Union[int, List[int], None] = None,
         num_imputations: int = 5,
         return_linear_predictors: bool = False,
         return_reference_risks: bool = False) -> dict:
     """
     This function is used to build an absolute risk model that incorporates different input parameters before and after
-        a given time cut-point. The model is then applied to estimate absolute risks.
+        a given time cut-point. The model is then applied to estimate the combined absolute risks.
 
     :param apply_age_start:
-        Age(s) for the start of the interval, over which, to compute the absolute risk. If a single
-        integer is provided, all instances in the profiles ('apply_covariate_profile_path' and/or
-        'apply_snp_profile_path') are assigned this start age for the interval. If a different start age needs to be
-        assigned for each instance, provide a list of ages as integers of the same length as the number of instances in
-        these profiles.
+        Age(s) for the start of the interval, over which, to compute the absolute risk. If a single integer is provided,
+        all instances in the profiles ('apply_covariate_profile_path' and/or 'apply_snp_profile_path') are assigned this
+        start age for the interval. If a different start age needs to be assigned for each instance, provide a list of
+        ages as integers of the same length as the number of instances in these profiles. If a list is provided, the
+        parameters 'apply_age_interval_length' and 'cutpoint' must also be a list of the same length.
     :param apply_age_interval_length:
-        Number of years over which to compute the absolute risk. That is to say that the
-        age at the end of the interval is 'apply_age_start' + 'apply_age_interval_length'. If a single integer is
-        provided, all instances in the profiles ('apply_covariate_profile_path' and/or 'apply_snp_profile_path') are
-        assigned this interval length. If a different interval length needs to be assigned for each instance, provide a
-        list of interval lengths as integers of the same length as the number of instances in these profiles.
+        Number of years over which to compute the absolute risk. That is to say that the age at the end of the interval
+        is 'apply_age_start' + 'apply_age_interval_length'. If a single integer is provided, all instances in the
+        profiles ('apply_covariate_profile_path' and/or 'apply_snp_profile_path') are assigned this interval length. If
+        a different interval length needs to be assigned for each instance, provide a list of interval lengths as
+        integers of the same length as the number of instances in these profiles. If a list is provided, the parameters
+        'apply_age_start' and 'cutpoint' must also be a list of the same length.
     :param model_disease_incidence_rates_path:
         A path to a CSV file containing the age-specific disease incidence rates for the population of interest. The
         data in the file must either contain two columns, named: ['age', 'rate'], to specify the incidence rates
@@ -191,7 +192,8 @@ def compute_absolute_risk_split_interval(
         Reference: https://patsy.readthedocs.io/en/latest/formulas.html#the-formula-language
     :param model_covariate_formula_after_cutpoint_path:
         A path to a text file containing the covariate formula for the model to be fit after the cut-point. The text
-        should contain a string description of the covariate formula using the Patsy symbolic description language.
+        should contain a string description of the covariate formula using the Patsy symbolic description language. If
+        this value is set to None, the covariate formula before the cut-point is used.
         Reference: https://patsy.readthedocs.io/en/latest/formulas.html#the-formula-language
     :param model_log_relative_risk_before_cutpoint_path:
         A path to a JSON file containing the log odds ratios, of the variables in the model except the intercept term,
@@ -200,19 +202,22 @@ def compute_absolute_risk_split_interval(
     :param model_log_relative_risk_after_cutpoint_path:
         A path to a JSON file containing the log odds ratios, of the variables in the model except the intercept term,
         in association with the disease, for the model to be fit after the cut-point. The JSON file should contain a
-        dictionary with the variable names as keys and the log odds ratios as values.
+        dictionary with the variable names as keys and the log odds ratios as values. If this value is set to None, the
+        log odds ratios before the cut-point are used.
     :param model_reference_dataset_before_cutpoint_path:
         A path to a CSV file containing the reference dataset with risk factor distribution that is representative of
         the population of interest before the cut-point.
     :param model_reference_dataset_after_cutpoint_path:
         A path to a CSV file containing the reference dataset with risk factor distribution that is representative of
-        the population of interest after the cut-point.
+        the population of interest after the cut-point. If this value is set to None, the reference dataset before the
+        cut-point is used.
     :param model_reference_dataset_weights_variable_name_before_cutpoint:
         A string specifying the name of the variable in the dataset at 'model_reference_dataset_before_cutpoint_path'
         that contains the sampling weights for each individual.
     :param model_reference_dataset_weights_variable_name_after_cutpoint:
         A string specifying the name of the variable in the dataset at 'model_reference_dataset_after_cutpoint_path'
-        that contains the sampling weights for each individual.
+        that contains the sampling weights for each individual. If this value is set to None, the weights variable name
+        before the cut-point is used.
     :param model_snp_info_path:
         A path to a CSV file containing the information about the SNPs in the model. The data should contain three
         columns, named: ['snp_name', 'snp_odds_ratio', 'snp_freq'] corresponding to the SNP ID, the odds ratio of the
@@ -224,19 +229,26 @@ def compute_absolute_risk_split_interval(
     :param model_family_history_variable_name_after_cutpoint:
         A string specifying the name of the binary variable (values: {0, 1}; missing values are permitted) in the
         dataset at 'model_reference_dataset_after_cutpoint_path' that indicates whether the individual has a family
-        history of the disease.
+        history of the disease. If this value is set to None, the family history variable name before the cut-point is
+        used.
     :param apply_covariate_profile_before_cutpoint_path:
         A path to a CSV file containing the covariate (risk factor) profiles of the individuals for whom the absolute
         risk is to be computed before the cut-point.
     :param apply_covariate_profile_after_cutpoint_path:
         A path to a CSV file containing the covariate (risk factor) profiles of the individuals for whom the absolute
-        risk is to be computed after the cut-point.
+        risk is to be computed after the cut-point. If this value is set to None, the covariate profile before the
+        cut-point is used.
     :param apply_snp_profile_path:
         A path to a CSV file containing the SNP profiles (values: {0: homozygous reference alleles, 1: heterozygous,
         2: homozygous alternate alleles}) of the individuals for whom the absolute risk is to be computed. Missing
         values are permitted.
     :param cutpoint:
-        Integer age using which the absolute risk computation is split into before and after the cut-point.
+        Integer age using which the absolute risk computation is split into before and after the cut-point. If a single
+        integer is provided, all instances in the profiles ('apply_covariate_profile_path' and/or
+        'apply_snp_profile_path') are assigned this cut-point. If a different cut-point needs to be assigned for each
+        instance, provide a list of cut-points as integers of the same length as the number of instances in these
+        profiles. If a list is provided, the parameters 'apply_age_start' and 'apply_age_interval_length' must also be a
+        list of the same length.
     :param num_imputations:
         The number of imputations for handling missing SNPs.
     :param return_linear_predictors:
@@ -245,6 +257,36 @@ def compute_absolute_risk_split_interval(
     :param return_reference_risks:
         Set True to return the absolute risk estimates for each individual in the 'model_reference_dataset_path'
         dataset.
+    :return:
+        A dictionary with the following keys—
+            1) 'model':
+                A dictionary containing the model parameters. It contains two further keys: 'before_cutpoint' and
+                'after_cutpoint', each of which contains the model parameters before and after the cut-point,
+                respectively.
+                A Pandas Series can be reconstructed using the following code:
+                    import pandas as pd
+                    results = compute_absolute_risk_split_interval(...)
+                    model_before_cutpoint = pd.Series(results["model"]["before_cutpoint"])
+                    model_after_cutpoint = pd.Series(results["model"]["after_cutpoint"])
+            2) 'profile':
+                A records-oriented JSON of the input profile data, the specified age intervals, cut-points, and the
+                calculated absolute risk estimates. If 'return_linear_predictors' is set to True, they are also included
+                as an additional column.
+                A Pandas DataFrame can be reconstructed using the following code:
+                    import pandas as pd
+                    results = compute_absolute_risk_split_interval(...)
+                    pd.read_json(results["profile"], orient="records")
+            3) 'reference_risks':
+                If 'return_reference_risks' is True, this key will be present in the returned dictionary. It will
+                contain two list of dictionaries with keys before_cutpoint' and 'after_cutpoint', each of which contains
+                the reference risks for before and after the cut-point datasets, respectively. Each of these lists
+                contains dictionaries, one per unique combination of the specified age intervals, containing
+                age at the start of interval ('age_interval_start'), age at the end of interval ('age_interval_end'),
+                and a list absolute risk estimates for the individuals in the reference dataset ('population_risks').
+            4) 'method':
+                A string containing the name of the method used to calculate the absolute risk estimates. When this
+                method is used, the method name is "iCARE - absolute risk with split intervals".
+
     """
     from icare import check_errors
 
@@ -349,7 +391,7 @@ def compute_absolute_risk_split_interval(
         results = misc.combine_split_absolute_risk_results(
             results_before_cutpoint, results_after_cutpoint,
             return_linear_predictors, return_reference_risks,
-            f"iCARE - absolute risk with split intervals at {cutpoint} years"
+            "iCARE - absolute risk with split intervals"
         )
     else:
         results = compute_absolute_risk(

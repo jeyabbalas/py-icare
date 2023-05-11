@@ -46,6 +46,8 @@ def combine_split_absolute_risk_results(results_before_cutpoint: dict, results_a
         profile_after_cutpoint.set_index("id", inplace=True)
 
     profile = pd.DataFrame(index=profile_before_cutpoint.index)
+    profile.index.name = profile_before_cutpoint.index.name
+
     profile["age_interval_start"] = profile_before_cutpoint["age_interval_start"]
     profile["cutpoint"] = profile_after_cutpoint["age_interval_start"]
     profile["age_interval_end"] = profile_after_cutpoint["age_interval_end"]
@@ -79,6 +81,7 @@ def combine_split_absolute_risk_results(results_before_cutpoint: dict, results_a
         if column not in profile_before_cutpoint.columns:
             profile[column] = profile_after_cutpoint[column]
 
+    profile.insert(0, "id", profile.index)
     results["profile"] = profile.to_json(orient="records")
 
     if return_reference_risks:
