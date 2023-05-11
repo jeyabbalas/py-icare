@@ -300,8 +300,9 @@ def compute_absolute_risk_split_interval(
         # Calculate age intervals before and after the cut-point
         check_errors.check_cutpoint_and_age_intervals(cutpoint, apply_age_start, apply_age_interval_length)
 
+        scalar_intervals = all([isinstance(x, int) for x in [cutpoint, apply_age_start, apply_age_interval_length]])
         age_start_before_cutpoint = apply_age_start
-        if isinstance(apply_age_start, int):
+        if scalar_intervals:
             start_to_cutpoint = cutpoint - apply_age_start
             age_interval_length_before_cutpoint = start_to_cutpoint if start_to_cutpoint < apply_age_interval_length \
                 else apply_age_interval_length
@@ -311,8 +312,8 @@ def compute_absolute_risk_split_interval(
             age_interval_length_after_cutpoint = apply_age_start + apply_age_interval_length - age_start_after_cutpoint
         else:
             age_interval_length_before_cutpoint = [
-                max(min(cutpoint - start, interval), 0)
-                for start, interval in zip(apply_age_start, apply_age_interval_length)
+                max(min(cut - start, interval), 0)
+                for cut, start, interval in zip(cutpoint, apply_age_start, apply_age_interval_length)
             ]
 
             age_start_after_cutpoint = [

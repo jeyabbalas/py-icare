@@ -238,38 +238,42 @@ def check_return_population_risks_type(return_reference_risks: bool) -> None:
         raise ValueError("ERROR: The 'return_reference_risks' input must be a boolean.")
 
 
-def check_cutpoint_and_age_intervals(cutpoint: Optional[int], age_start: Union[int, List[int]],
+def check_cutpoint_and_age_intervals(cutpoint: Union[int, List[int], None], age_start: Union[int, List[int]],
                                      age_interval_length: Union[int, List[int]]):
     if cutpoint is None:
         raise ValueError("ERROR: If you wish to use different model inputs over parts of the age interval, you must "
                          "specify a 'cutpoint' input.")
 
-    if not isinstance(cutpoint, int):
-        raise ValueError("ERROR: The 'cutpoint' input must be an integer age.")
+    if not isinstance(cutpoint, int) and not isinstance(cutpoint, list):
+        raise ValueError("ERROR: The 'cutpoint' input must be an integer or a list of integers.")
+
+    if isinstance(cutpoint, list):
+        if any([not isinstance(x, int) for x in cutpoint]):
+            raise ValueError("ERROR: The 'cutpoint' input must be an integer or a list of integers.")
 
     check_age_interval_types(age_start, age_interval_length)
 
-    if (isinstance(age_start, int) and not isinstance(age_interval_length, int)) or \
-            (not isinstance(age_start, int) and isinstance(age_interval_length, int)):
-        raise ValueError("ERROR: If one of 'age_start' and 'age_interval_length' is an integer, the other must also "
-                         "be an integer.")
+    all_integers = all([isinstance(x, int) for x in [cutpoint, age_start, age_interval_length]])
+    all_lists = all([isinstance(x, list) for x in [cutpoint, age_start, age_interval_length]])
 
-    if (isinstance(age_start, list) and not isinstance(age_interval_length, list)) or \
-            (not isinstance(age_start, list) and isinstance(age_interval_length, list)):
-        raise ValueError("ERROR: If one of 'age_start' and 'age_interval_length' is a list, the other must also "
-                         "be a list.")
+    if not (all_integers or all_lists):
+        raise ValueError("ERROR: If 'cutpoint' is an integer, 'age_start' and 'age_interval_length' must also be "
+                         "integers. If 'cutpoint' is a list, 'age_start' and 'age_interval_length' must also be "
+                         "lists.")
 
-    if isinstance(age_start, list) and len(age_start) != len(age_interval_length):
-        raise ValueError("ERROR: If 'apply_age_start' and 'apply_age_interval_length' are lists, they must be of equal "
-                         "length.")
+    if isinstance(age_start, list) and len(age_start) != len(age_interval_length) and len(age_start) != len(cutpoint):
+        raise ValueError("ERROR: If 'apply_age_start', 'apply_age_interval_length', and 'cutpoint' are lists, they "
+                         "must be of equal length.")
 
     correct_intervals = False
-    if isinstance(age_start, int):
+    if all_integers:
         if cutpoint < age_start or cutpoint > age_start + age_interval_length:
             correct_intervals = True
     else:
-        if any([cutpoint < start for start in age_start]) or \
-                any([cutpoint > start + length for start, length in zip(age_start, age_interval_length)]):
+        any_cutpoint_below_start = any([cut < start for cut, start in zip(cutpoint, age_start)])
+        any_cutpoint_beyond_end = any([cut > start + length for cut, start, length in
+                                       zip(cutpoint, age_start, age_interval_length)])
+        if any_cutpoint_below_start or any_cutpoint_beyond_end:
             correct_intervals = True
 
     if correct_intervals:
