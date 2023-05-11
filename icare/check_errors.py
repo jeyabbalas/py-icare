@@ -337,3 +337,15 @@ def check_study_data(study_data: pd.DataFrame) -> None:
     if (study_data['study_entry_age'] >= study_data['study_exit_age']).any():
         raise ValueError("ERROR: The 'study_entry_age' column in the 'study_data' input must be lower than the "
                          "'study_exit_age' column.")
+
+
+def check_icare_model_parameters(icare_model_parameters: Optional[dict]) -> None:
+    if icare_model_parameters is None:
+        raise ValueError("ERROR: The 'icare_model_parameters' input must be provided.")
+
+    if not isinstance(icare_model_parameters, dict):
+        raise ValueError("ERROR: The 'icare_model_parameters' input must be a dictionary.")
+
+    if 'model_disease_incidence_rates_path' not in icare_model_parameters.keys():
+        raise ValueError("ERROR: The 'icare_model_parameters' input must contain the "
+                         "'model_disease_incidence_rates_path' key.")

@@ -261,6 +261,8 @@ def compute_absolute_risk_split_interval(
     :param return_reference_risks:
         Set True to return the absolute risk estimates for each individual in the 'model_reference_dataset_path'
         dataset.
+    :param seed:
+        Fix a seed for reproducibility.
     :return:
         A dictionary with the following keys—
             1) 'model':
@@ -502,14 +504,26 @@ def validate_absolute_risk_model(
         Name of the absolute risk model being validated, e.g., "Synthetic model" or "Simulation setting".
     :param seed:
         Fix a seed for reproducibility.
+    :return:
+        A dictionary with the following keys—
+            1) 'risk_prediction_interval':
+                A string describing the risk prediction interval e.g., "5 years". If the risk prediction is over the
+                total follow-up period of the study, this reads "Observed follow-up". If each individual is assigned a
+                different risk prediction interval, this reads "Varies across individuals".
+            2) 'dataset_name':
+                A string containing the name of the validation dataset,
+            3) 'model_name':
+                A string containing the name of the absolute risk model being validated,
+            4) 'method':
+                A string containing the name of the iCARE method being used. When this method is used, the method name
+                is "iCARE - absolute risk model validation".
     """
     from icare.model_validation import ModelValidation
 
-    # compute_absolute_risk(**icare_model_parameters)
     model_validation = ModelValidation(study_data_path, predicted_risk_interval, icare_model_parameters,
                                        predicted_risk_variable_name, linear_predictor_variable_name,
+                                       number_of_percentiles, linear_predictor_cutoffs, dataset_name, model_name,
                                        reference_entry_age, reference_exit_age, reference_predicted_risks,
-                                       reference_linear_predictors, number_of_percentiles, linear_predictor_cutoffs,
-                                       dataset_name, model_name, seed)
+                                       reference_linear_predictors, seed)
 
-    return misc.package_validation_results_to_dict(model_validation)
+    return misc.package_validation_results_to_dict(model_validation, "iCARE - absolute risk model validation")

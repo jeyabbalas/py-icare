@@ -5,14 +5,62 @@ import numpy as np
 import pandas as pd
 
 from icare import check_errors
+from icare.absolute_risk_model import AbsoluteRiskModel
+
+
+class ModelValidationResults:
+    risk_prediction_interval: str
+    dataset_name: str
+    model_name: str
+    subject_specific_predicted_absolute_risk: pd.Series
+
+    def __init__(self):
+        pass
+
+    def set_risk_prediction_interval(self, risk_prediction_interval: str):
+        self.risk_prediction_interval = risk_prediction_interval
+
+    def set_dataset_name(self, dataset_name: str):
+        self.dataset_name = dataset_name
+
+    def set_model_name(self, model_name: str):
+        self.model_name = model_name
+
+
+def get_absolute_risk_parameters(icare_model_parameters: dict) -> dict:
+    check_errors.check_icare_model_parameters(icare_model_parameters)
+    absolute_risk_parameters = dict()
+
+    absolute_risk_parameter_list = [
+        "apply_age_start", "apply_age_interval_length", "age_specific_disease_incidence_rates_path", "formula_path",
+        "snp_info_path", "log_relative_risk_path", "reference_dataset_path",
+        "model_reference_dataset_weights_variable_name", "age_specific_competing_incidence_rates_path",
+        "model_family_history_variable_name", "num_imputations", "covariate_profile_path", "snp_profile_path",
+        "return_reference_risks", "seed"
+    ]
+
+    icare_model_parameter_list = [
+        "apply_age_start", "apply_age_interval_length", "model_disease_incidence_rates_path",
+        "model_covariate_formula_path", "model_snp_info_path", "model_log_relative_risk_path",
+        "model_reference_dataset_path", "model_reference_dataset_weights_variable_name",
+        "model_competing_incidence_rates_path", "model_family_history_variable_name", "num_imputations",
+        "apply_covariate_profile_path", "apply_snp_profile_path", "return_reference_risks", "seed"
+    ]
+
+    for absolute_risk_param, icare_param in zip(absolute_risk_parameter_list, icare_model_parameter_list):
+        default_value = 5 if absolute_risk_param == "num_imputations" else None
+        absolute_risk_parameters[absolute_risk_param] = icare_model_parameters[icare_param] \
+            if icare_param in icare_model_parameters else default_value
+
+    return absolute_risk_parameters
 
 
 class ModelValidation:
     study_data: pd.DataFrame
-    timeframe: str
-    predicted_time_interval: np.array
-    dataset_name: str
-    model_name: str
+    predicted_risk_variable_name: str
+    linear_predictor_variable_name: str
+
+    results: ModelValidationResults
 
     def __init__(self,
                  study_data_path: Union[str, pathlib.Path],
@@ -20,36 +68,50 @@ class ModelValidation:
                  icare_model_parameters: Optional[dict],
                  predicted_risk_variable_name: Optional[str],
                  linear_predictor_variable_name: Optional[str],
-                 reference_entry_age: Union[int, List[int], None],
-                 reference_exit_age: Union[int, List[int], None],
-                 reference_predicted_risks: Optional[List[float]],
-                 reference_linear_predictors: Optional[List[float]],
                  number_of_percentiles: int,
                  linear_predictor_cutoffs: Optional[List[float]],
                  dataset_name: str,
-                 model_name: str) -> None:
-        self._set_study_data(study_data_path)
+                 model_name: str,
+                 reference_entry_age: Union[int, List[int], None] = None,
+                 reference_exit_age: Union[int, List[int], None] = None,
+                 reference_predicted_risks: Optional[List[float]] = None,
+                 reference_linear_predictors: Optional[List[float]] = None,
+                 seed: Optional[int] = None) -> None:
+        self.results = ModelValidationResults()
+        self._set_study_data(study_data_path, predicted_risk_variable_name, linear_predictor_variable_name)
         self._set_predicted_time_interval(predicted_risk_interval)
         self._calculate_followup_period()
-        # self._calculate_risk(icare_model_parameters, predicted_risk_variable_name, linear_predictor_variable_name)
-        # self._calculate_reference_risk
-        self.dataset_name = dataset_name
-        self.model_name = model_name
+        self._calculate_risks(icare_model_parameters, predicted_risk_variable_name, linear_predictor_variable_name,
+                              seed)
+        self._calculate_reference_risks(icare_model_parameters, reference_entry_age, reference_exit_age,
+                                        reference_predicted_risks, reference_linear_predictors, seed)
+        self.results.set_dataset_name(dataset_name)
+        self.results.set_model_name(model_name)
 
-    def _set_study_data(self, study_data_path: Union[str, pathlib.Path]) -> None:
+    def _set_study_data(self, study_data_path: Union[str, pathlib.Path], predicted_risk_variable_name: Optional[str],
+                        linear_predictor_variable_name: Optional[str]) -> None:
         # load study data and set data types
         self.study_data = pd.read_csv(study_data_path)
 
         mandatory_columns = ["observed_outcome", "study_entry_age", "study_exit_age", "time_of_onset"]
-        check_errors.check_data_columns(self.study_data, mandatory_columns)
+        check_errors.check_data_mandatory_columns(self.study_data, mandatory_columns)
         integer_columns = ["observed_outcome", "study_entry_age", "study_exit_age"]
         self.study_data[integer_columns] = self.study_data[integer_columns].astype(int)
         float_columns = ["time_of_onset"]
         self.study_data[float_columns] = self.study_data[float_columns].astype(float)
 
+        optional_columns = []
         if "sampling_weights" in self.study_data.columns:
-            check_errors.check_data_columns(self.study_data, ["sampling_weights"])
-            self.study_data["sampling_weights"] = self.study_data["sampling_weights"].astype(float)
+            optional_columns.append("sampling_weights")
+        if predicted_risk_variable_name is not None:
+            self.predicted_risk_variable_name = predicted_risk_variable_name
+            optional_columns.append(predicted_risk_variable_name)
+        if linear_predictor_variable_name is not None:
+            self.linear_predictor_variable_name = linear_predictor_variable_name
+            optional_columns.append(linear_predictor_variable_name)
+        if len(optional_columns) > 0:
+            check_errors.check_data_optional_columns(self.study_data, optional_columns)
+            self.study_data[optional_columns] = self.study_data[optional_columns].astype(float)
 
         if "id" in self.study_data.columns:
             self.study_data.set_index("id", inplace=True)
@@ -59,45 +121,83 @@ class ModelValidation:
         self.study_data["observed_followup"] = self.study_data["study_exit_age"] - self.study_data["study_entry_age"]
 
         # censor cases where the time of onset is after the observed follow-up period
-        case_onset_after_followup = (self.study_data["observed_outcome"] == 1) & \
-                                    (self.study_data["time_of_onset"] > self.study_data["observed_followup"])
-        self.study_data.loc[case_onset_after_followup, "observed_outcome"] = 0
-        self.study_data.loc[case_onset_after_followup, "time_of_onset"] = float("inf")
+        onset_after_followup = (self.study_data["observed_outcome"] == 1) & \
+                               (self.study_data["time_of_onset"] > self.study_data["observed_followup"])
+        self.study_data.loc[onset_after_followup, "observed_outcome"] = 0
+        self.study_data.loc[onset_after_followup, "time_of_onset"] = float("inf")
 
     def _set_predicted_time_interval(self, predicted_risk_interval: Union[str, int, List[int]]) -> None:
         check_errors.check_validation_time_interval_type(predicted_risk_interval, self.study_data)
 
         if isinstance(predicted_risk_interval, str):
-            self.timeframe = "Observed follow-up"
-            self.predicted_risk_interval = self.study_data["observed_followup"].values
+            self.results.set_risk_prediction_interval("Observed follow-up")
+            self.study_data["predicted_risk_interval"] = self.study_data["observed_followup"]
         elif isinstance(predicted_risk_interval, int):
             if predicted_risk_interval == 1:
-                self.timeframe = "1 year"
+                self.results.set_risk_prediction_interval("1 year")
             else:
-                self.timeframe = f"{predicted_risk_interval} years"
-            self.predicted_risk_interval = np.array([predicted_risk_interval] * len(self.study_data))
+                self.results.set_risk_prediction_interval(f"{predicted_risk_interval} years")
+            self.study_data["predicted_risk_interval"] = predicted_risk_interval
         else:
-            self.timeframe = "Varies across individuals"
-            self.predicted_risk_interval = np.array(predicted_risk_interval)
+            self.study_data["predicted_risk_interval"] = predicted_risk_interval
+            if len(self.study_data["predicted_risk_interval"].unique()) == 1:
+                self.results.set_risk_prediction_interval(
+                    f"{self.study_data['predicted_risk_interval'].unique()[0]} years")
+            else:
+                self.results.set_risk_prediction_interval("Varies across individuals")
 
-    def _calculate_followup_period(self):
+    def _calculate_followup_period(self) -> None:
         self.study_data["followup"] = self.study_data["observed_followup"]
 
         # follow-up period is the minimum of the predicted risk interval and the observed follow-up period
-        onset_within_interval = (self.study_data["time_of_onset"] <= self.predicted_risk_interval)
-        interval_ends_before_followup = (self.predicted_risk_interval <= self.study_data["observed_followup"])
-        self.study_data.loc[onset_within_interval & interval_ends_before_followup, "followup"] = \
-            self.predicted_risk_interval[onset_within_interval & interval_ends_before_followup]
+        onset_within_interval = (self.study_data["time_of_onset"] <= self.study_data["predicted_risk_interval"])
+        interval_smaller_than_followup = (self.study_data["predicted_risk_interval"] <=
+                                          self.study_data["observed_followup"])
+        self.study_data.loc[onset_within_interval & interval_smaller_than_followup, "followup"] = \
+            self.study_data.loc[onset_within_interval & interval_smaller_than_followup, "predicted_risk_interval"]
 
         # censor cases when the time of onset is after the predicted risk interval
-        onset_after_interval = (self.study_data["time_of_onset"] > self.predicted_risk_interval)
-        onset_before_followup = (self.study_data["time_of_onset"] <= self.study_data["observed_followup"])
-        self.study_data.loc[onset_after_interval & onset_before_followup, "observed_outcome"] = 0
-        self.study_data.loc[onset_after_interval & onset_before_followup, "followup"] = \
-            self.predicted_risk_interval[onset_after_interval & onset_before_followup]
+        onset_after_interval = (self.study_data["time_of_onset"] > self.study_data["predicted_risk_interval"])
+        onset_within_followup = (self.study_data["time_of_onset"] <= self.study_data["observed_followup"])
+        self.study_data.loc[onset_after_interval & onset_within_followup, "observed_outcome"] = 0
+        self.study_data.loc[onset_after_interval & onset_within_followup, "followup"] = \
+            self.study_data.loc[onset_after_interval & onset_within_followup, "predicted_risk_interval"]
 
         # censor cases when onset is after the observed follow-up period
-        observed_longer_than_interval = (self.study_data["observed_followup"] >= self.predicted_risk_interval)
+        observed_longer_than_interval = (self.study_data["observed_followup"] >=
+                                         self.study_data["predicted_risk_interval"])
         onset_after_followup = (self.study_data["time_of_onset"] > self.study_data["observed_followup"])
         self.study_data.loc[observed_longer_than_interval & onset_after_followup, "followup"] = \
-            self.predicted_risk_interval[observed_longer_than_interval & onset_after_followup]
+            self.study_data.loc[observed_longer_than_interval & onset_after_followup, "predicted_risk_interval"]
+
+    def _calculate_risks(self, icare_model_parameters: Optional[dict], predicted_risk_variable_name: Optional[str],
+                         linear_predictor_variable_name: Optional[str], seed: Optional[int] = None) -> None:
+        if predicted_risk_variable_name is not None and linear_predictor_variable_name is not None:
+            if predicted_risk_variable_name in self.study_data.columns and \
+                    linear_predictor_variable_name in self.study_data.columns:
+                return
+
+        print("\nNote: Both 'predicted_risk_variable_name' and 'linear_predictor_variable_name' were not provided. "
+              "They will be calculated using iCARE.")
+
+        absolute_risk_parameters = get_absolute_risk_parameters(icare_model_parameters)
+        absolute_risk_parameters["apply_age_start"] = self.study_data["study_entry_age"].tolist()
+        absolute_risk_parameters["apply_age_interval_length"] = self.study_data["followup"].tolist()
+        absolute_risk_parameters["return_reference_risks"] = True
+        absolute_risk_parameters["seed"] = seed
+
+        absolute_risk_model = AbsoluteRiskModel(**absolute_risk_parameters)
+        absolute_risk_model.compute_absolute_risks()
+
+        self.predicted_risk_variable_name = "risk_estimates"
+        self.study_data["risk_estimates"] = absolute_risk_model.results.risk_estimates.values
+        self.linear_predictor_variable_name = "linear_predictors"
+        self.study_data["linear_predictors"] = absolute_risk_model.results.linear_predictors.values
+
+    def _calculate_reference_risks(self, icare_model_parameters: Optional[dict],
+                                   reference_entry_age: Union[int, List[int], None],
+                                   reference_exit_age: Union[int, List[int], None],
+                                   reference_predicted_risks: Optional[List[float]],
+                                   reference_linear_predictors: Optional[List[float]],
+                                   seed: Optional[int] = None) -> None:
+        pass

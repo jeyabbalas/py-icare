@@ -176,8 +176,8 @@ def get_samples_from_expanded_quantile_range(values: pd.Series, lower_index: int
 def model_free_impute_absolute_risk(age_interval_starts: np.ndarray, age_interval_ends: np.ndarray,
                                     baseline_hazards: pd.Series, competing_incidence_rates: pd.Series,
                                     betas: np.ndarray, z_profile: pd.DataFrame, population_distribution: pd.DataFrame,
-                                    population_weights: np.ndarray, num_imputations: int) -> Tuple[
-        np.ndarray, np.ndarray]:
+                                    population_weights: np.ndarray,
+                                    num_imputations: int) -> Tuple[np.ndarray, np.ndarray]:
     profile_risks = np.zeros(len(age_interval_starts))
     profile_linear_predictors = np.zeros(len(age_interval_starts))
     population_linear_predictors = population_distribution @ betas

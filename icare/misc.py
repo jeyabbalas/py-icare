@@ -94,11 +94,13 @@ def combine_split_absolute_risk_results(results_before_cutpoint: dict, results_a
     return results
 
 
-def package_validation_results_to_dict(model_validation: ModelValidation) -> dict:
+def package_validation_results_to_dict(model_validation: ModelValidation, method_name: str) -> dict:
     results = dict()
 
-    results["risk_prediction_interval"] = model_validation.timeframe
-    results["dataset_name"] = model_validation.dataset_name
-    results["model_name"] = model_validation.model_name
+    results["risk_prediction_interval"] = model_validation.results.risk_prediction_interval
+    results["dataset_name"] = model_validation.results.dataset_name
+    results["model_name"] = model_validation.results.model_name
+
+    results["method"] = method_name
 
     return results
