@@ -11,7 +11,7 @@ from icare.absolute_risk_model import AbsoluteRiskModel, format_rates
 class ModelValidationResults:
     risk_prediction_interval: str
     reference: dict
-    incidence_rates: dict
+    incidence_rates: pd.DataFrame
     dataset_name: str
     model_name: str
     subject_specific_predicted_absolute_risk: pd.Series
@@ -35,19 +35,19 @@ class ModelValidationResults:
 
     def set_incidence_rates(self, study_ages: List[int], study_incidence: List[float],
                             population_incidence_rates_path: Union[str, pathlib.Path, None] = None) -> None:
-        self.incidence_rates = dict()
-        self.incidence_rates["study"] = pd.DataFrame({
+        self.incidence_rates = pd.DataFrame({
             "age": study_ages,
-            "rate": study_incidence
+            "study_rate": study_incidence
         })
 
         if population_incidence_rates_path is not None:
             disease_incidence_rates = format_rates(utils.read_file_to_dataframe(population_incidence_rates_path))
-
-            self.incidence_rates["population"] = pd.DataFrame({
+            population_incidence_rates = pd.DataFrame({
                 "age": disease_incidence_rates.index,
-                "rate": disease_incidence_rates.values
+                "population_rate": disease_incidence_rates.values
             })
+
+            self.incidence_rates = pd.merge(population_incidence_rates, self.incidence_rates, how="left", on="age")
 
 
 def get_absolute_risk_parameters(icare_model_parameters: dict) -> dict:

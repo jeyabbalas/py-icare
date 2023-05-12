@@ -517,14 +517,15 @@ def validate_absolute_risk_model(
                 by iCARE, or pre-calculated 'reference_predicted_risks' and 'reference_linear_predictors' are both
                 directly provided by the user.
             3) 'incidence_rates':
-                A dictionary containing the estimated age-specific incidence rates in the study and population under
-                the keys: 'study' and 'population', respectively. Each contain a data frame containing columns: 'age',
-                and 'rate' converted into records-oriented JSON format.
-            3) 'dataset_name':
-                A string containing the name of the validation dataset,
-            4) 'model_name':
-                A string containing the name of the absolute risk model being validated,
-            5) 'method':
+                The estimated age-specific incidence rates in the study and population as a data frame converted into
+                the records-oriented JSON format. The columns of the data frame are "age" and "study_rate". When iCARE
+                parameters are included (containing the disease incidence rates), "population_rate" is also included as
+                a column.
+            4) 'dataset_name':
+                A string containing the name of the validation dataset.
+            5) 'model_name':
+                A string containing the name of the absolute risk model being validated.
+            6) 'method':
                 A string containing the name of the iCARE method being used. When this method is used, the method name
                 is "iCARE - absolute risk model validation".
     """
