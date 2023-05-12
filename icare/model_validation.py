@@ -10,6 +10,7 @@ from icare.absolute_risk_model import AbsoluteRiskModel
 
 class ModelValidationResults:
     risk_prediction_interval: str
+    reference: dict
     dataset_name: str
     model_name: str
     subject_specific_predicted_absolute_risk: pd.Series
@@ -25,6 +26,11 @@ class ModelValidationResults:
 
     def set_model_name(self, model_name: str):
         self.model_name = model_name
+
+    def set_reference_risks(self, reference_absolute_risk: List[float], reference_risk_score: List[float]):
+        self.reference = dict()
+        self.reference["absolute_risk"] = reference_absolute_risk
+        self.reference["risk_score"] = reference_risk_score
 
 
 def get_absolute_risk_parameters(icare_model_parameters: dict) -> dict:
@@ -200,4 +206,37 @@ class ModelValidation:
                                    reference_predicted_risks: Optional[List[float]],
                                    reference_linear_predictors: Optional[List[float]],
                                    seed: Optional[int] = None) -> None:
-        pass
+        if reference_predicted_risks is not None and reference_linear_predictors is not None:
+            check_errors.check_reference_risks(reference_predicted_risks, reference_linear_predictors)
+            self.results.set_reference_risks(reference_predicted_risks, reference_linear_predictors)
+            return
+
+        age_intervals_provided = reference_entry_age is not None and reference_exit_age is not None
+
+        if not age_intervals_provided:
+            return
+
+        print("\nNote: Both 'reference_predicted_risks' and 'reference_linear_predictors' were not provided. "
+              "They will be calculated using iCARE.")
+
+        check_errors.check_reference_time_interval_type(reference_entry_age, reference_exit_age)
+        if isinstance(reference_entry_age, int):
+            reference_followup = reference_exit_age - reference_entry_age
+        else:
+            reference_followup = [exit_age - entry_age
+                                  for entry_age, exit_age in zip(reference_entry_age, reference_exit_age)]
+
+        absolute_risk_parameters = get_absolute_risk_parameters(icare_model_parameters)
+        absolute_risk_parameters["apply_age_start"] = reference_entry_age
+        absolute_risk_parameters["apply_age_interval_length"] = reference_followup
+        absolute_risk_parameters["covariate_profile_path"] = absolute_risk_parameters["reference_dataset_path"]
+        absolute_risk_parameters["snp_profile_path"] = None
+        absolute_risk_parameters["return_reference_risks"] = True
+        absolute_risk_parameters["seed"] = seed
+
+        absolute_risk_model = AbsoluteRiskModel(**absolute_risk_parameters)
+        absolute_risk_model.compute_absolute_risks()
+
+        reference_predicted_risks = absolute_risk_model.results.risk_estimates.values
+        reference_linear_predictors = absolute_risk_model.results.linear_predictors.values
+        self.results.set_reference_risks(reference_predicted_risks, reference_linear_predictors)

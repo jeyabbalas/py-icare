@@ -98,6 +98,7 @@ def package_validation_results_to_dict(model_validation: ModelValidation, method
     results = dict()
 
     results["risk_prediction_interval"] = model_validation.results.risk_prediction_interval
+    results["reference"] = model_validation.results.reference
     results["dataset_name"] = model_validation.results.dataset_name
     results["model_name"] = model_validation.results.model_name
 

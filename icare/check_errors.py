@@ -349,3 +349,48 @@ def check_icare_model_parameters(icare_model_parameters: Optional[dict]) -> None
     if 'model_disease_incidence_rates_path' not in icare_model_parameters.keys():
         raise ValueError("ERROR: The 'icare_model_parameters' input must contain the "
                          "'model_disease_incidence_rates_path' key.")
+
+
+def check_reference_risks(reference_predicted_risks: List[float], reference_linear_predictors: List[float]) -> None:
+    if not isinstance(reference_predicted_risks, list):
+        raise ValueError("ERROR: The 'reference_predicted_risks' input must be a list.")
+
+    if not all([isinstance(x, float) for x in reference_predicted_risks]):
+        raise ValueError("ERROR: The 'reference_predicted_risks' input must be a list of floats.")
+
+    if any([np.isnan(x) for x in reference_predicted_risks]):
+        raise ValueError("ERROR: The 'reference_predicted_risks' input must not contain any missing values.")
+
+    if not isinstance(reference_linear_predictors, list):
+        raise ValueError("ERROR: The 'reference_linear_predictors' input must be a list.")
+
+    if not all([isinstance(x, float) for x in reference_linear_predictors]):
+        raise ValueError("ERROR: The 'reference_linear_predictors' input must be a list of floats.")
+
+    if any([np.isnan(x) for x in reference_linear_predictors]):
+        raise ValueError("ERROR: The 'reference_linear_predictors' input must not contain any missing values.")
+
+
+def check_reference_time_interval_type(reference_entry_age: List[int], reference_exit_age: List[int]) -> None:
+    all_integers = all([isinstance(x, int) for x in [reference_entry_age, reference_exit_age]])
+    all_lists = all([isinstance(x, list) for x in [reference_entry_age, reference_exit_age]])
+
+    if not (all_integers or all_lists):
+        raise ValueError("ERROR: The 'reference_entry_age' and 'reference_exit_age' inputs must either both be "
+                         "integers or both be lists of integers.")
+
+    if all_integers:
+        if reference_entry_age < 0 or reference_exit_age < 0:
+            raise ValueError("ERROR: The 'reference_entry_age' and 'reference_exit_age' inputs must be positive "
+                             "integers.")
+
+    if all_lists:
+        if not all([isinstance(x, int) and x >= 0 for x in reference_entry_age]):
+            raise ValueError("ERROR: The 'reference_entry_age' inputs must be a list of positive integers.")
+
+        if not all([isinstance(x, int) and x >= 0 for x in reference_exit_age]):
+            raise ValueError("ERROR: The 'reference_exit_age' inputs must be a list of positive integers.")
+
+        if len(reference_entry_age) != len(reference_exit_age):
+            raise ValueError("ERROR: The 'reference_entry_age' and 'reference_exit_age' inputs must be lists of "
+                             "integers with the same length.")

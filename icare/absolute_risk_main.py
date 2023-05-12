@@ -510,11 +510,16 @@ def validate_absolute_risk_model(
                 A string describing the risk prediction interval e.g., "5 years". If the risk prediction is over the
                 total follow-up period of the study, this reads "Observed follow-up". If each individual is assigned a
                 different risk prediction interval, this reads "Varies across individuals".
-            2) 'dataset_name':
+            2) 'reference':
+                A dictionary with two further keys: 'absolute_risk' and 'risk_score' containing the predicted
+                absolute risks and linear predictors for the reference population, respectively. This key is only
+                present when either both 'reference_entry_age' and 'reference_exit_age' are provided or both
+                'reference_predicted_risks' and 'reference_linear_predictors' are directly provided by the user.
+            3) 'dataset_name':
                 A string containing the name of the validation dataset,
-            3) 'model_name':
+            4) 'model_name':
                 A string containing the name of the absolute risk model being validated,
-            4) 'method':
+            5) 'method':
                 A string containing the name of the iCARE method being used. When this method is used, the method name
                 is "iCARE - absolute risk model validation".
     """
