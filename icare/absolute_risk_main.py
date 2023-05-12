@@ -513,8 +513,12 @@ def validate_absolute_risk_model(
             2) 'reference':
                 A dictionary with two further keys: 'absolute_risk' and 'risk_score' containing the predicted
                 absolute risks and linear predictors for the reference population, respectively. This key is only
-                present when either both 'reference_entry_age' and 'reference_exit_age' are provided or both
-                'reference_predicted_risks' and 'reference_linear_predictors' are directly provided by the user.
+                present when either both 'reference_entry_age' and 'reference_exit_age' are provided to be calculated
+                by iCARE, or pre-calculated 'reference_predicted_risks' and 'reference_linear_predictors' are both
+                directly provided by the user.
+            3) 'study_incidence_rates':
+                The estimated age-specific incidence rates in the study. A data frame containing columns: 'age', and
+                'incidence' is converted into records-oriented JSON format.
             3) 'dataset_name':
                 A string containing the name of the validation dataset,
             4) 'model_name':

@@ -11,6 +11,7 @@ from icare.absolute_risk_model import AbsoluteRiskModel
 class ModelValidationResults:
     risk_prediction_interval: str
     reference: dict
+    study_incidence_rates: pd.DataFrame
     dataset_name: str
     model_name: str
     subject_specific_predicted_absolute_risk: pd.Series
@@ -31,6 +32,12 @@ class ModelValidationResults:
         self.reference = dict()
         self.reference["absolute_risk"] = reference_absolute_risk
         self.reference["risk_score"] = reference_risk_score
+
+    def set_study_incidence_rates(self, ages: List[int], age_specific_study_incidence: List[float]) -> None:
+        self.study_incidence_rates = pd.DataFrame({
+            'age': ages,
+            'incidence': age_specific_study_incidence
+        })
 
 
 def get_absolute_risk_parameters(icare_model_parameters: dict) -> dict:
@@ -63,6 +70,7 @@ def get_absolute_risk_parameters(icare_model_parameters: dict) -> dict:
 
 class ModelValidation:
     study_data: pd.DataFrame
+    nested_case_control_study: bool = False
     predicted_risk_variable_name: str
     linear_predictor_variable_name: str
 
@@ -83,16 +91,22 @@ class ModelValidation:
                  reference_predicted_risks: Optional[List[float]] = None,
                  reference_linear_predictors: Optional[List[float]] = None,
                  seed: Optional[int] = None) -> None:
+        # setup
         self.results = ModelValidationResults()
+        self.results.set_dataset_name(dataset_name)
+        self.results.set_model_name(model_name)
         self._set_study_data(study_data_path, predicted_risk_variable_name, linear_predictor_variable_name)
         self._set_predicted_time_interval(predicted_risk_interval)
         self._calculate_followup_period()
+
+        # calculating predicted risks
         self._calculate_risks(icare_model_parameters, predicted_risk_variable_name, linear_predictor_variable_name,
                               seed)
         self._calculate_reference_risks(icare_model_parameters, reference_entry_age, reference_exit_age,
                                         reference_predicted_risks, reference_linear_predictors, seed)
-        self.results.set_dataset_name(dataset_name)
-        self.results.set_model_name(model_name)
+
+        # calculating validation metrics
+        self._calculate_study_incidence_rates()
 
     def _set_study_data(self, study_data_path: Union[str, pathlib.Path], predicted_risk_variable_name: Optional[str],
                         linear_predictor_variable_name: Optional[str]) -> None:
@@ -108,6 +122,7 @@ class ModelValidation:
 
         optional_columns = []
         if "sampling_weights" in self.study_data.columns:
+            self.nested_case_control_study = True
             optional_columns.append("sampling_weights")
         if predicted_risk_variable_name is not None:
             self.predicted_risk_variable_name = predicted_risk_variable_name
@@ -121,6 +136,9 @@ class ModelValidation:
 
         if "id" in self.study_data.columns:
             self.study_data.set_index("id", inplace=True)
+
+        if self.nested_case_control_study:
+            self.study_data["frequency"] = 1 / self.study_data["sampling_weights"]
 
         # check data
         check_errors.check_study_data(self.study_data)
@@ -240,3 +258,26 @@ class ModelValidation:
         reference_predicted_risks = absolute_risk_model.results.risk_estimates.values
         reference_linear_predictors = absolute_risk_model.results.linear_predictors.values
         self.results.set_reference_risks(reference_predicted_risks, reference_linear_predictors)
+
+    def _calculate_study_incidence_rates(self) -> None:
+        age_specific_study_incidence = []
+
+        age_of_onset = self.study_data["study_entry_age"] + self.study_data["time_of_onset"]
+        ages = range(self.study_data["study_entry_age"].min() + 1, self.study_data["study_exit_age"].max())
+        frequency = self.study_data["frequency"].values \
+            if self.nested_case_control_study else np.ones(len(self.study_data))
+
+        for age in ages:
+            entered_before_age = self.study_data["study_entry_age"] <= age - 1
+            not_exited_before_age = self.study_data["study_exit_age"] >= age
+            in_study_at_age = entered_before_age & not_exited_before_age
+            onset_at_age = (age_of_onset >= age) & (age_of_onset < age + 1)
+            onset_at_or_after_age = age_of_onset >= age
+
+            num_onsets_at_age = np.sum((in_study_at_age & onset_at_age) @ frequency)
+            num_in_study_at_age = np.sum((in_study_at_age & onset_at_or_after_age) @ frequency)
+
+            incidence_at_age = num_onsets_at_age / num_in_study_at_age if num_in_study_at_age > 0 else np.nan
+            age_specific_study_incidence.append(incidence_at_age)
+
+        self.results.set_study_incidence_rates(list(ages), age_specific_study_incidence)
