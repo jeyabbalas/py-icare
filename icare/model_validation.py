@@ -4,14 +4,14 @@ from typing import Union, List, Optional
 import numpy as np
 import pandas as pd
 
-from icare import check_errors
-from icare.absolute_risk_model import AbsoluteRiskModel
+from icare import check_errors, utils
+from icare.absolute_risk_model import AbsoluteRiskModel, format_rates
 
 
 class ModelValidationResults:
     risk_prediction_interval: str
     reference: dict
-    study_incidence_rates: pd.DataFrame
+    incidence_rates: dict
     dataset_name: str
     model_name: str
     subject_specific_predicted_absolute_risk: pd.Series
@@ -33,11 +33,21 @@ class ModelValidationResults:
         self.reference["absolute_risk"] = reference_absolute_risk
         self.reference["risk_score"] = reference_risk_score
 
-    def set_study_incidence_rates(self, ages: List[int], age_specific_study_incidence: List[float]) -> None:
-        self.study_incidence_rates = pd.DataFrame({
-            'age': ages,
-            'incidence': age_specific_study_incidence
+    def set_incidence_rates(self, study_ages: List[int], study_incidence: List[float],
+                            population_incidence_rates_path: Union[str, pathlib.Path, None] = None) -> None:
+        self.incidence_rates = dict()
+        self.incidence_rates["study"] = pd.DataFrame({
+            "age": study_ages,
+            "rate": study_incidence
         })
+
+        if population_incidence_rates_path is not None:
+            disease_incidence_rates = format_rates(utils.read_file_to_dataframe(population_incidence_rates_path))
+
+            self.incidence_rates["population"] = pd.DataFrame({
+                "age": disease_incidence_rates.index,
+                "rate": disease_incidence_rates.values
+            })
 
 
 def get_absolute_risk_parameters(icare_model_parameters: dict) -> dict:
@@ -106,7 +116,7 @@ class ModelValidation:
                                         reference_predicted_risks, reference_linear_predictors, seed)
 
         # calculating validation metrics
-        self._calculate_study_incidence_rates()
+        self._calculate_study_incidence_rates(icare_model_parameters)
 
     def _set_study_data(self, study_data_path: Union[str, pathlib.Path], predicted_risk_variable_name: Optional[str],
                         linear_predictor_variable_name: Optional[str]) -> None:
@@ -259,7 +269,7 @@ class ModelValidation:
         reference_linear_predictors = absolute_risk_model.results.linear_predictors.values
         self.results.set_reference_risks(reference_predicted_risks, reference_linear_predictors)
 
-    def _calculate_study_incidence_rates(self) -> None:
+    def _calculate_study_incidence_rates(self, icare_model_parameters: Optional[dict]) -> None:
         age_specific_study_incidence = []
 
         age_of_onset = self.study_data["study_entry_age"] + self.study_data["time_of_onset"]
@@ -280,4 +290,8 @@ class ModelValidation:
             incidence_at_age = num_onsets_at_age / num_in_study_at_age if num_in_study_at_age > 0 else np.nan
             age_specific_study_incidence.append(incidence_at_age)
 
-        self.results.set_study_incidence_rates(list(ages), age_specific_study_incidence)
+        population_incidence_rates_path = None
+        if icare_model_parameters is not None:
+            if "model_disease_incidence_rates_path" in icare_model_parameters:
+                population_incidence_rates_path = icare_model_parameters["model_disease_incidence_rates_path"]
+        self.results.set_incidence_rates(list(ages), age_specific_study_incidence, population_incidence_rates_path)

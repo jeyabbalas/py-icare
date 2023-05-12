@@ -516,9 +516,10 @@ def validate_absolute_risk_model(
                 present when either both 'reference_entry_age' and 'reference_exit_age' are provided to be calculated
                 by iCARE, or pre-calculated 'reference_predicted_risks' and 'reference_linear_predictors' are both
                 directly provided by the user.
-            3) 'study_incidence_rates':
-                The estimated age-specific incidence rates in the study. A data frame containing columns: 'age', and
-                'incidence' is converted into records-oriented JSON format.
+            3) 'incidence_rates':
+                A dictionary containing the estimated age-specific incidence rates in the study and population under
+                the keys: 'study' and 'population', respectively. Each contain a data frame containing columns: 'age',
+                and 'rate' converted into records-oriented JSON format.
             3) 'dataset_name':
                 A string containing the name of the validation dataset,
             4) 'model_name':
