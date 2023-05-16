@@ -13,6 +13,7 @@ class ModelValidationResults:
     reference: dict
     incidence_rates: pd.DataFrame
     auc: dict
+    expected_by_observed_ratio: dict
     dataset_name: str
     model_name: str
     subject_specific_predicted_absolute_risk: pd.Series
@@ -54,6 +55,13 @@ class ModelValidationResults:
         self.auc = {
             "auc": auc,
             "variance": variance,
+            "lower_ci": lower_ci,
+            "upper_ci": upper_ci
+        }
+
+    def set_expected_by_observed_ratio(self, ratio: float, lower_ci: float, upper_ci: float) -> None:
+        self.expected_by_observed_ratio = {
+            "ratio": ratio,
             "lower_ci": lower_ci,
             "upper_ci": upper_ci
         }
@@ -131,6 +139,7 @@ class ModelValidation:
         # calculating validation metrics
         self._calculate_study_incidence_rates(icare_model_parameters)
         self._calculate_auc()
+        self._calculate_expected_by_observed_ratio()
 
     def _set_study_data(self, study_data_path: Union[str, pathlib.Path], predicted_risk_variable_name: Optional[str],
                         linear_predictor_variable_name: Optional[str]) -> None:
@@ -365,9 +374,41 @@ class ModelValidation:
             # compute E_{S_0}[I(S_1 > S_0)] and E_{S_1}[I(S_1 > S_0)]
             mean_s0_indicator, mean_s1_indicator = np.mean(indicator, axis=0), np.mean(indicator, axis=1)
             auc_variance = np.var(mean_s0_indicator) / len(mean_s0_indicator) + \
-                np.var(mean_s1_indicator) / len(mean_s1_indicator)
+                           np.var(mean_s1_indicator) / len(mean_s1_indicator)
 
         # calculate the 95% confidence intervals
-        auc_ci_lower, auc_ci_upper = wald_confidence_interval(auc, np.sqrt(auc_variance))
+        lower_ci, upper_ci = wald_confidence_interval(auc, np.sqrt(auc_variance))
 
-        self.results.set_auc(auc, auc_variance, auc_ci_lower, auc_ci_upper)
+        self.results.set_auc(auc, auc_variance, lower_ci, upper_ci)
+
+    def _calculate_expected_by_observed_ratio(self):
+        if self.nested_case_control_study:
+            expected = np.sum(self.study_data["risk_estimates"] * self.study_data["frequency"]) / np.sum(
+                self.study_data["frequency"])
+            observed = np.sum(self.study_data["observed_outcome"] * self.study_data["frequency"]) / np.sum(
+                self.study_data["frequency"])
+
+            # variance of observed risk
+            observed_risk_variance = \
+                (observed * (1 - observed) +
+                 np.sum(
+                     (self.study_data["observed_outcome"] - observed) ** 2 *
+                     (1 - self.study_data["sampling_weights"]) / self.study_data["sampling_weights"] ** 2
+                 ) / np.sum(self.study_data["frequency"])) / np.sum(self.study_data["frequency"])
+        else:
+            expected = np.mean(self.study_data["risk_estimates"])
+            observed = np.mean(self.study_data["observed_outcome"])
+
+            # variance of observed risk
+            observed_risk_variance = (observed * (1 - observed)) / len(self.study_data["risk_estimates"])
+
+        # expected by observed ratio
+        expected_by_observed = expected / observed
+        # variance of log of expected by observed ratio
+        log_expected_by_observed_variance = observed_risk_variance / observed ** 2
+
+        # calculate the 95% confidence intervals
+        lower_ci, upper_ci = np.exp(
+            wald_confidence_interval(np.log(expected_by_observed), np.sqrt(log_expected_by_observed_variance)))
+
+        self.results.set_expected_by_observed_ratio(expected_by_observed, lower_ci, upper_ci)

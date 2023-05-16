@@ -525,11 +525,15 @@ def validate_absolute_risk_model(
                 A dictionary containing the area under the receiver operating characteristic curve (AUC), the variance,
                 and the 95% confidence interval for the AUC. The dictionary has the following keys: 'auc', 'variance',
                 'lower_ci', and 'upper_ci'.
-            5) 'dataset_name':
+            5) 'expected_by_observed_ratio':
+                A dictionary containing the ratio of the expected and the observed number of cases in the study
+                population, and the 95% confidence interval for the ratio. The dictionary has the following keys:
+                'ratio', 'lower_ci', and 'upper_ci'.
+            6) 'dataset_name':
                 A string containing the name of the validation dataset.
-            6) 'model_name':
+            7) 'model_name':
                 A string containing the name of the absolute risk model being validated.
-            7) 'method':
+            8) 'method':
                 A string containing the name of the iCARE method being used. When this method is used, the method name
                 is "iCARE - absolute risk model validation".
     """
