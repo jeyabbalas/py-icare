@@ -100,6 +100,7 @@ def package_validation_results_to_dict(model_validation: ModelValidation, method
     results["risk_prediction_interval"] = model_validation.results.risk_prediction_interval
     results["reference"] = model_validation.results.reference
     results["incidence_rates"] = model_validation.results.incidence_rates.to_json(orient="records")
+    results["auc"] = model_validation.results.auc
     results["dataset_name"] = model_validation.results.dataset_name
     results["model_name"] = model_validation.results.model_name
 

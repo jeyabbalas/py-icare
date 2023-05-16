@@ -521,11 +521,15 @@ def validate_absolute_risk_model(
                 the records-oriented JSON format. The columns of the data frame are "age" and "study_rate". When iCARE
                 parameters are included (containing the disease incidence rates), "population_rate" is also included as
                 a column.
-            4) 'dataset_name':
+            4) 'auc':
+                A dictionary containing the area under the receiver operating characteristic curve (AUC), the variance,
+                and the 95% confidence interval for the AUC. The dictionary has the following keys: 'auc', 'variance',
+                'lower_ci', and 'upper_ci'.
+            5) 'dataset_name':
                 A string containing the name of the validation dataset.
-            5) 'model_name':
+            6) 'model_name':
                 A string containing the name of the absolute risk model being validated.
-            6) 'method':
+            7) 'method':
                 A string containing the name of the iCARE method being used. When this method is used, the method name
                 is "iCARE - absolute risk model validation".
     """

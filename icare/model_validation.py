@@ -1,5 +1,5 @@
 import pathlib
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -12,6 +12,7 @@ class ModelValidationResults:
     risk_prediction_interval: str
     reference: dict
     incidence_rates: pd.DataFrame
+    auc: dict
     dataset_name: str
     model_name: str
     subject_specific_predicted_absolute_risk: pd.Series
@@ -49,6 +50,14 @@ class ModelValidationResults:
 
             self.incidence_rates = pd.merge(population_incidence_rates, self.incidence_rates, how="left", on="age")
 
+    def set_auc(self, auc: float, variance: float, lower_ci: float, upper_ci: float) -> None:
+        self.auc = {
+            "auc": auc,
+            "variance": variance,
+            "lower_ci": lower_ci,
+            "upper_ci": upper_ci
+        }
+
 
 def get_absolute_risk_parameters(icare_model_parameters: dict) -> dict:
     check_errors.check_icare_model_parameters(icare_model_parameters)
@@ -76,6 +85,10 @@ def get_absolute_risk_parameters(icare_model_parameters: dict) -> dict:
             if icare_param in icare_model_parameters else default_value
 
     return absolute_risk_parameters
+
+
+def wald_confidence_interval(estimate, standard_error, z=1.96):
+    return estimate - z * standard_error, estimate + z * standard_error
 
 
 class ModelValidation:
@@ -117,6 +130,7 @@ class ModelValidation:
 
         # calculating validation metrics
         self._calculate_study_incidence_rates(icare_model_parameters)
+        self._calculate_auc()
 
     def _set_study_data(self, study_data_path: Union[str, pathlib.Path], predicted_risk_variable_name: Optional[str],
                         linear_predictor_variable_name: Optional[str]) -> None:
@@ -295,3 +309,65 @@ class ModelValidation:
             if "model_disease_incidence_rates_path" in icare_model_parameters:
                 population_incidence_rates_path = icare_model_parameters["model_disease_incidence_rates_path"]
         self.results.set_incidence_rates(list(ages), age_specific_study_incidence, population_incidence_rates_path)
+
+    def _calculate_inverse_probability_weighted_auc(self, indicator: np.array) -> Tuple[float, float]:
+        # uses the inverse probability weighting (IPW) method to calculate the AUC
+        cases = self.study_data["observed_outcome"] == 1
+        controls = self.study_data["observed_outcome"] == 0
+
+        # calculate the weight matrix
+        frequency_cases = self.study_data.loc[cases, "frequency"].values
+        frequency_controls = self.study_data.loc[controls, "frequency"].values
+        weight_matrix = np.kron(frequency_controls, frequency_cases).reshape(
+            len(frequency_controls), len(frequency_cases))
+
+        auc = np.sum(indicator * weight_matrix) / np.sum(weight_matrix)
+
+        # calculate variance of AUC
+        # compute E_{S_0}[I(S_1 > S_0)] and E_{S_1}[I(S_1 > S_0)]
+        mean_s0_indicator = np.average(indicator, axis=0, weights=frequency_controls)
+        mean_s1_indicator = np.average(indicator, axis=1, weights=frequency_cases)
+
+        sampling_weights_cases = self.study_data.loc[cases, "sampling_weights"].values
+        term_1_1 = np.average((mean_s0_indicator - np.average(mean_s0_indicator, weights=frequency_cases)) ** 2,
+                              weights=frequency_cases)
+        term_1_2 = np.average((mean_s0_indicator - auc) ** 2 * (1 - sampling_weights_cases) / sampling_weights_cases,
+                              weights=frequency_cases)
+        term_1 = term_1_1 + term_1_2
+
+        sampling_weights_controls = self.study_data.loc[controls, "sampling_weights"].values
+        term_2_1 = np.average((mean_s1_indicator - np.average(mean_s1_indicator, weights=frequency_controls)) ** 2,
+                              weights=frequency_controls)
+        term_2_2 = np.average(
+            (mean_s1_indicator - auc) ** 2 * (1 - sampling_weights_controls) / sampling_weights_controls,
+            weights=frequency_controls)
+        term_2 = term_2_1 + term_2_2
+
+        auc_variance = term_1 / np.sum(frequency_cases) + term_2 / np.sum(frequency_controls)
+
+        return auc, auc_variance
+
+    def _calculate_auc(self):
+        cases = self.study_data["observed_outcome"] == 1
+        controls = self.study_data["observed_outcome"] == 0
+
+        score_cases = self.study_data.loc[cases, self.linear_predictor_variable_name].values
+        score_controls = self.study_data.loc[controls, self.linear_predictor_variable_name].values
+        # indicate if case scores are higher than controls
+        indicator = np.array([x > score_controls for x in score_cases]).T
+
+        if self.nested_case_control_study:
+            auc, auc_variance = self._calculate_inverse_probability_weighted_auc(indicator)
+        else:
+            auc = np.mean(indicator)
+
+            # calculate variance of AUC
+            # compute E_{S_0}[I(S_1 > S_0)] and E_{S_1}[I(S_1 > S_0)]
+            mean_s0_indicator, mean_s1_indicator = np.mean(indicator, axis=0), np.mean(indicator, axis=1)
+            auc_variance = np.var(mean_s0_indicator) / len(mean_s0_indicator) + \
+                np.var(mean_s1_indicator) / len(mean_s1_indicator)
+
+        # calculate the 95% confidence intervals
+        auc_ci_lower, auc_ci_upper = wald_confidence_interval(auc, np.sqrt(auc_variance))
+
+        self.results.set_auc(auc, auc_variance, auc_ci_lower, auc_ci_upper)
