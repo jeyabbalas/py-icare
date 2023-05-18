@@ -521,6 +521,10 @@ def validate_absolute_risk_model(
                 the records-oriented JSON format. The columns of the data frame are "age" and "study_rate". When iCARE
                 parameters are included (containing the disease incidence rates), "population_rate" is also included as
                 a column.
+                A Pandas data frame can be reconstructed using the following code snippet:
+                    import pandas as pd
+                    results = validate_absolute_risk_model(...)
+                    incidence_rates = pd.read_json(results['incidence_rates'])
             4) 'auc':
                 A dictionary containing the area under the receiver operating characteristic curve (AUC), the variance,
                 and the 95% confidence interval for the AUC. The dictionary has the following keys: 'auc', 'variance',
@@ -529,11 +533,28 @@ def validate_absolute_risk_model(
                 A dictionary containing the ratio of the expected and the observed number of cases in the study
                 population, and the 95% confidence interval for the ratio. The dictionary has the following keys:
                 'ratio', 'lower_ci', and 'upper_ci'.
-            6) 'dataset_name':
+            6) 'calibration':
+                A dictionary containing the calibration results. The dictionary has the following keys: 'absolute_risk',
+                and 'relative_risk' containing the calibration results for absolute risk and relative risk,
+                respectively. Each of these keys is a dictionary with the following information (associated key name):
+                statistical testing method name ('method'), p-value ('p_value'), variance matrix ('variance'),
+                test-statistic ('statistic'; with a sub-key containing 'chi_square' for the chi-squared metric),
+                and parameters of the statistical test ('parameter'; with a sub-key 'degrees_of_freedom' for the
+                degrees of freedom of the chi-squared distribution).
+            7) 'category_specific_calibration':
+                A records-oriented JSON containing the category-specific calibration results. The columns of the data
+                frame are: 'category', 'observed_absolute_risk', 'predicted_absolute_risk', 'lower_ci_absolute_risk',
+                'upper_ci_absolute_risk', 'observed_relative_risk', 'predicted_relative_risk', 'lower_ci_relative_risk',
+                'upper_ci_relative_risk'. The rows of the data frame are the categories of the risk score.
+                A Pandas data frame can be reconstructed using the following code snippet:
+                    import pandas as pd
+                    results = validate_absolute_risk_model(...)
+                    category_specific_calibration = pd.read_json((results['category_specific_calibration'])
+            8) 'dataset_name':
                 A string containing the name of the validation dataset.
-            7) 'model_name':
+            9) 'model_name':
                 A string containing the name of the absolute risk model being validated.
-            8) 'method':
+            10) 'method':
                 A string containing the name of the iCARE method being used. When this method is used, the method name
                 is "iCARE - absolute risk model validation".
     """

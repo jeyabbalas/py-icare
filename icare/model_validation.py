@@ -580,7 +580,7 @@ class ModelValidation:
 
         # store results to output
         self.results.append_risk_to_category_specific_calibration(
-            observed_probs_per_category, predicted_probs_per_category,
+            observed_probs_per_category.tolist(), predicted_probs_per_category.tolist(),
             [lower for lower, _ in confidence_intervals_ar], [upper for _, upper in confidence_intervals_ar],
             "absolute_risk"
         )
@@ -591,7 +591,7 @@ class ModelValidation:
         )
 
         self.results.append_risk_to_category_specific_calibration(
-            observed_rr_per_category, predicted_rr_per_category,
+            observed_rr_per_category.tolist(), predicted_rr_per_category.tolist(),
             [lower for lower, _ in confidence_intervals_rr], [upper for _, upper in confidence_intervals_rr],
             "relative_risk"
         )
@@ -667,7 +667,7 @@ class ModelValidation:
 
         # store results to output
         self.results.append_risk_to_category_specific_calibration(
-            observed_probs_per_category, predicted_probs_per_category,
+            observed_probs_per_category.tolist(), predicted_probs_per_category.tolist(),
             [lower for lower, _ in confidence_intervals_ar], [upper for _, upper in confidence_intervals_ar],
             "absolute_risk"
         )
@@ -678,7 +678,7 @@ class ModelValidation:
         )
 
         self.results.append_risk_to_category_specific_calibration(
-            observed_rr_per_category, predicted_rr_per_category,
+            observed_rr_per_category.tolist(), predicted_rr_per_category.tolist(),
             [lower for lower, _ in confidence_intervals_rr], [upper for _, upper in confidence_intervals_rr],
             "relative_risk"
         )
