@@ -152,8 +152,9 @@ def weighted_quantcut(x: pd.Series, weights: Optional[np.array] = None, q: Union
     return x_quantiles
 
 
-def calculate_rr_stddev_and_chi2(variance_ar_per_category: np.ndarray, number_percentiles: int,
-                                 mean_observed_prob, observed_probs_per_category, observed_rr_per_category, predicted_rr_per_category):
+def calculate_rr_stddev_chi2_and_variance(
+        variance_ar_per_category: np.ndarray, number_percentiles: int, mean_observed_prob, observed_probs_per_category,
+        observed_rr_per_category, predicted_rr_per_category) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     # variance-covariance matrix of the absolute risks
     variance_matrix_ar = np.diag(variance_ar_per_category)
 
@@ -165,9 +166,9 @@ def calculate_rr_stddev_and_chi2(variance_ar_per_category: np.ndarray, number_pe
     derivative_matrix = derivative_diagonal[:-1]
 
     # variance-covariance matrix for the log relative risks
-    varcov_log_rr_per_category = derivative_diagonal @ variance_matrix_ar @ derivative_diagonal
+    var_cov_log_rr_per_category = derivative_diagonal @ variance_matrix_ar @ derivative_diagonal
     # standard deviation for the log relative risks
-    stddev_log_rr_per_category = np.sqrt(np.diag(varcov_log_rr_per_category))
+    stddev_log_rr_per_category = np.sqrt(np.diag(var_cov_log_rr_per_category))
 
     # inverse of the sigma matrix for the log relative risk
     sigma_inv_log_rr = np.linalg.inv(derivative_matrix @ variance_matrix_ar @ derivative_matrix.T)
@@ -178,7 +179,7 @@ def calculate_rr_stddev_and_chi2(variance_ar_per_category: np.ndarray, number_pe
     # chi-square statistic for the log relative risk
     chi2_log_rr = diff_log_rr @ sigma_inv_log_rr @ diff_log_rr
 
-    return stddev_log_rr_per_category, chi2_log_rr, variance_matrix_ar, varcov_log_rr_per_category
+    return stddev_log_rr_per_category, chi2_log_rr, variance_matrix_ar, var_cov_log_rr_per_category
 
 
 class ModelValidation:
@@ -517,7 +518,10 @@ class ModelValidation:
             self.study_data["linear_predictors_category"].value_counts().sort_index().index.astype(str)
         )
 
-        self._calculate_risk_calibration(number_of_percentiles)
+        if self.nested_case_control_study:
+            self._calculate_risk_weighted_calibration(number_of_percentiles)
+        else:
+            self._calculate_risk_calibration(number_of_percentiles)
 
     def _calculate_risk_calibration(self, number_of_percentiles):
         samples_per_category = self.study_data["linear_predictors_category"].value_counts().sort_index().values
@@ -560,10 +564,12 @@ class ModelValidation:
             self.study_data["linear_predictors_category"]).mean().values / self.study_data["risk_estimates"].groupby(
             self.study_data["linear_predictors_category"]).mean().mean()
 
-        stddev_log_rr_per_category, chi2_log_rr, variance_matrix_ar, varcov_log_rr_per_category = \
-            calculate_rr_stddev_and_chi2(variance_ar_per_category, number_of_percentiles, mean_observed_prob,
-                                         observed_probs_per_category, observed_rr_per_category,
-                                         predicted_rr_per_category)
+        # variance and standard deviation of observed relative risks per category
+        # chi-squared test statistic
+        stddev_log_rr_per_category, chi2_log_rr, variance_matrix_ar, var_cov_log_rr_per_category = \
+            calculate_rr_stddev_chi2_and_variance(
+                variance_ar_per_category, number_of_percentiles, mean_observed_prob, observed_probs_per_category,
+                observed_rr_per_category, predicted_rr_per_category)
         df_rr = number_of_percentiles - 1
         p_value_rr = 1 - chi2.cdf(chi2_log_rr, df_rr)
 
@@ -592,5 +598,92 @@ class ModelValidation:
         self.results.append_calibration_statistical_test_results(
             "relative_risk", "Goodness of fit (GOF) test for Relative Risk",
             "chi_square", float(chi2_log_rr), p_value_rr, df_rr,
-            varcov_log_rr_per_category
+            var_cov_log_rr_per_category
+        )
+
+    def _calculate_risk_weighted_calibration(self, number_of_percentiles):
+        weights_per_category = self.study_data["frequency"].groupby(
+            self.study_data["linear_predictors_category"]).sum()
+
+        # absolute risk (ar) calibration
+        # mean observed outcome per category
+        observed_probs_weighted = self.study_data["observed_outcome"] * self.study_data["frequency"]
+        observed_probs_weighted_per_category = observed_probs_weighted.groupby(
+            self.study_data["linear_predictors_category"]).sum()
+        observed_probs_per_category = observed_probs_weighted_per_category / weights_per_category
+
+        # mean predicted outcome per category
+        predicted_probs_weighted = self.study_data["risk_estimates"] * self.study_data["frequency"]
+        predicted_probs_weighted_per_category = predicted_probs_weighted.groupby(
+            self.study_data["linear_predictors_category"]).sum()
+        predicted_probs_per_category = predicted_probs_weighted_per_category / weights_per_category
+
+        # variance of observed outcome per category (using the variance of a binomial distribution)
+        observed_risk_category = self.study_data["linear_predictors_category"].replace(
+            dict(predicted_probs_per_category)).astype(float)
+        variance_correction_ar = (self.study_data["observed_outcome"] - observed_risk_category) ** 2 * (
+                    1 - self.study_data["sampling_weights"]) / (self.study_data["sampling_weights"] ** 2)
+        variance_correction_ar_per_category = variance_correction_ar.groupby(
+            self.study_data["linear_predictors_category"]).sum() / weights_per_category
+        variance_ar_per_category = (observed_probs_per_category * (1 - observed_probs_per_category) +
+                                    variance_correction_ar_per_category) / weights_per_category
+
+        # standard deviation of observed outcome per category
+        stddev_ar_per_category = np.sqrt(variance_ar_per_category)
+
+        # Hosmer–Lemeshow goodness of fit (GOF) test
+        chi2_ar = np.sum(
+            ((observed_probs_per_category - predicted_probs_per_category) ** 2) / variance_ar_per_category)
+        df_ar = number_of_percentiles
+        p_value_ar = 1 - chi2.cdf(chi2_ar, df_ar)
+
+        # calculate the 95% confidence intervals
+        confidence_intervals_ar = []
+        for observed, stddev in zip(observed_probs_per_category, stddev_ar_per_category):
+            confidence_intervals_ar.append(wald_confidence_interval(observed, stddev))
+
+        # relative risk (rr) calibration
+        # mean observed outcome per category
+        mean_observed_prob = observed_probs_per_category.mean()
+
+        # mean observed relative risks per category
+        observed_rr_per_category = observed_probs_per_category.values / mean_observed_prob
+        # mean predicted relative risks per category
+        predicted_rr_per_category = predicted_probs_per_category.values / predicted_probs_per_category.mean()
+
+        # variance and standard deviation of observed relative risks per category
+        # chi-squared test statistic
+        stddev_log_rr_per_category, chi2_log_rr, variance_matrix_ar, var_cov_log_rr_per_category = \
+            calculate_rr_stddev_chi2_and_variance(
+                variance_ar_per_category, number_of_percentiles, mean_observed_prob, observed_probs_per_category,
+                observed_rr_per_category, predicted_rr_per_category)
+        df_rr = number_of_percentiles - 1
+        p_value_rr = 1 - chi2.cdf(chi2_log_rr, df_rr)
+
+        # calculate the 95% confidence intervals
+        confidence_intervals_rr = []
+        for observed, stddev in zip(observed_rr_per_category, stddev_log_rr_per_category):
+            confidence_intervals_rr.append(np.exp(wald_confidence_interval(np.log(observed), stddev)).tolist())
+
+        # store results to output
+        self.results.append_risk_to_category_specific_calibration(
+            observed_probs_per_category, predicted_probs_per_category,
+            [lower for lower, _ in confidence_intervals_ar], [upper for _, upper in confidence_intervals_ar],
+            "absolute_risk"
+        )
+        self.results.append_calibration_statistical_test_results(
+            "absolute_risk", "Hosmer–Lemeshow goodness of fit (GOF) test for Absolute Risk",
+            "chi_square", float(chi2_ar), p_value_ar, df_ar,
+            variance_matrix_ar
+        )
+
+        self.results.append_risk_to_category_specific_calibration(
+            observed_rr_per_category, predicted_rr_per_category,
+            [lower for lower, _ in confidence_intervals_rr], [upper for _, upper in confidence_intervals_rr],
+            "relative_risk"
+        )
+        self.results.append_calibration_statistical_test_results(
+            "relative_risk", "Goodness of fit (GOF) test for Relative Risk",
+            "chi_square", float(chi2_log_rr), p_value_rr, df_rr,
+            var_cov_log_rr_per_category
         )
