@@ -3,6 +3,8 @@ from typing import Union, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+from scipy.stats import chi2
+from statsmodels.stats.weightstats import DescrStatsW
 
 from icare import check_errors, utils
 from icare.absolute_risk_model import AbsoluteRiskModel, format_rates
@@ -17,6 +19,8 @@ class ModelValidationResults:
     dataset_name: str
     model_name: str
     subject_specific_predicted_absolute_risk: pd.Series
+    category_specific_calibration: pd.DataFrame
+    calibration: dict
 
     def __init__(self):
         pass
@@ -66,6 +70,32 @@ class ModelValidationResults:
             "upper_ci": upper_ci
         }
 
+    def init_calibration(self, score_categories: List[str]) -> None:
+        self.category_specific_calibration = pd.DataFrame(index=score_categories)
+        self.category_specific_calibration.index.name = "category"
+        self.calibration = dict()
+
+    def append_risk_to_category_specific_calibration(
+            self, observed_risks: List[float], predicted_risks: List[float],
+            lower_cis: List[float], upper_cis: List[float], risk_name: str) -> None:
+        self.category_specific_calibration["observed_" + risk_name] = observed_risks
+        self.category_specific_calibration["predicted_" + risk_name] = predicted_risks
+        self.category_specific_calibration["lower_ci_" + risk_name] = lower_cis
+        self.category_specific_calibration["upper_ci_" + risk_name] = upper_cis
+
+    def append_calibration_statistical_test_results(
+            self, score_name: str, method: str, test_statistic_name: str, test_statistic: float, p_value: float,
+            df: int, variance: np.ndarray) -> None:
+        self.calibration[score_name] = {
+            "method": method,
+            "p_value": p_value,
+            "variance": variance.tolist()
+        }
+        self.calibration[score_name]["statistic"] = dict()
+        self.calibration[score_name]["statistic"][test_statistic_name] = test_statistic
+        self.calibration[score_name]["parameter"] = dict()
+        self.calibration[score_name]["parameter"]["degrees_of_freedom"] = df
+
 
 def get_absolute_risk_parameters(icare_model_parameters: dict) -> dict:
     check_errors.check_icare_model_parameters(icare_model_parameters)
@@ -99,11 +129,64 @@ def wald_confidence_interval(estimate, standard_error, z=1.96):
     return estimate - z * standard_error, estimate + z * standard_error
 
 
+def reposition(cut, x, na_rm):
+    x_ge_cut = x >= cut
+    if np.sum(x_ge_cut) == 0:
+        return cut
+    else:
+        return np.min(x[x_ge_cut]) if na_rm else np.nanmin(x[x_ge_cut])
+
+
+def weighted_quantcut(x: pd.Series, weights: Optional[np.array] = None, q: Union[int, List[float]] = 10) -> pd.Series:
+    if isinstance(q, int):
+        q = np.linspace(0, 1, num=q + 1)
+
+    cutoffs = DescrStatsW(x, weights=weights, ddof=0).quantile(q, return_pandas=False)
+
+    duplicate_cutoffs = pd.Series(cutoffs).duplicated()
+    if any(duplicate_cutoffs):
+        x_quantiles = pd.cut(x, bins=np.unique(cutoffs), include_lowest=True)
+    else:
+        x_quantiles = pd.cut(x, bins=cutoffs, include_lowest=True)
+
+    return x_quantiles
+
+
+def calculate_rr_stddev_and_chi2(variance_ar_per_category: np.ndarray, number_percentiles: int,
+                                 mean_observed_prob, observed_probs_per_category, observed_rr_per_category, predicted_rr_per_category):
+    # variance-covariance matrix of the absolute risks
+    variance_matrix_ar = np.diag(variance_ar_per_category)
+
+    # derivative matrix for log relative risks
+    derivative_off_diagonal = -1 / (number_percentiles * mean_observed_prob)
+    derivative_diagonal = np.diag(1 / observed_probs_per_category + derivative_off_diagonal)
+    derivative_diagonal[np.tril_indices(derivative_diagonal.shape[0], -1)] = derivative_off_diagonal
+    derivative_diagonal[np.triu_indices(derivative_diagonal.shape[0], 1)] = derivative_off_diagonal
+    derivative_matrix = derivative_diagonal[:-1]
+
+    # variance-covariance matrix for the log relative risks
+    varcov_log_rr_per_category = derivative_diagonal @ variance_matrix_ar @ derivative_diagonal
+    # standard deviation for the log relative risks
+    stddev_log_rr_per_category = np.sqrt(np.diag(varcov_log_rr_per_category))
+
+    # inverse of the sigma matrix for the log relative risk
+    sigma_inv_log_rr = np.linalg.inv(derivative_matrix @ variance_matrix_ar @ derivative_matrix.T)
+
+    # difference between the log of the observed and predicted relative risks
+    diff_log_rr = (np.log(observed_rr_per_category) - np.log(predicted_rr_per_category))[:-1]
+
+    # chi-square statistic for the log relative risk
+    chi2_log_rr = diff_log_rr @ sigma_inv_log_rr @ diff_log_rr
+
+    return stddev_log_rr_per_category, chi2_log_rr, variance_matrix_ar, varcov_log_rr_per_category
+
+
 class ModelValidation:
     study_data: pd.DataFrame
     nested_case_control_study: bool = False
     predicted_risk_variable_name: str
     linear_predictor_variable_name: str
+    risk_score_categories: List[str]
 
     results: ModelValidationResults
 
@@ -140,6 +223,8 @@ class ModelValidation:
         self._calculate_study_incidence_rates(icare_model_parameters)
         self._calculate_auc()
         self._calculate_expected_by_observed_ratio()
+        self._categorize_risk_scores(linear_predictor_cutoffs, number_of_percentiles)
+        self._calculate_calibration(number_of_percentiles)
 
     def _set_study_data(self, study_data_path: Union[str, pathlib.Path], predicted_risk_variable_name: Optional[str],
                         linear_predictor_variable_name: Optional[str]) -> None:
@@ -356,7 +441,7 @@ class ModelValidation:
 
         return auc, auc_variance
 
-    def _calculate_auc(self):
+    def _calculate_auc(self) -> None:
         cases = self.study_data["observed_outcome"] == 1
         controls = self.study_data["observed_outcome"] == 0
 
@@ -381,7 +466,7 @@ class ModelValidation:
 
         self.results.set_auc(auc, auc_variance, lower_ci, upper_ci)
 
-    def _calculate_expected_by_observed_ratio(self):
+    def _calculate_expected_by_observed_ratio(self) -> None:
         if self.nested_case_control_study:
             expected = np.sum(self.study_data["risk_estimates"] * self.study_data["frequency"]) / np.sum(
                 self.study_data["frequency"])
@@ -412,3 +497,100 @@ class ModelValidation:
             wald_confidence_interval(np.log(expected_by_observed), np.sqrt(log_expected_by_observed_variance)))
 
         self.results.set_expected_by_observed_ratio(expected_by_observed, lower_ci, upper_ci)
+
+    def _categorize_risk_scores(self, cutoffs: Optional[List[float]], number_of_percentiles: int) -> None:
+        if cutoffs is not None:
+            cutoffs = [np.min(self.study_data["linear_predictors"])] + cutoffs + \
+                      [np.max(self.study_data["linear_predictors"])]
+            self.study_data["linear_predictors_category"] = pd.cut(self.study_data["linear_predictors"],
+                                                                   bins=cutoffs, include_lowest=True)
+        else:
+            if self.nested_case_control_study:
+                self.study_data["linear_predictors_category"] = weighted_quantcut(
+                    self.study_data["linear_predictors"], self.study_data["frequency"], number_of_percentiles)
+            else:
+                self.study_data["linear_predictors_category"] = pd.qcut(
+                    self.study_data['linear_predictors'], q=number_of_percentiles)
+
+    def _calculate_calibration(self, number_of_percentiles):
+        self.results.init_calibration(
+            self.study_data["linear_predictors_category"].value_counts().sort_index().index.astype(str)
+        )
+
+        self._calculate_risk_calibration(number_of_percentiles)
+
+    def _calculate_risk_calibration(self, number_of_percentiles):
+        samples_per_category = self.study_data["linear_predictors_category"].value_counts().sort_index().values
+
+        # absolute risk (ar) calibration
+        # mean observed outcome per category
+        observed_probs_per_category = self.study_data["observed_outcome"].groupby(
+            self.study_data["linear_predictors_category"]).mean().values
+        # mean predicted outcome per category
+        predicted_probs_per_category = self.study_data["risk_estimates"].groupby(
+            self.study_data["linear_predictors_category"]).mean().values
+
+        # variance of observed outcome per category (using the variance of a binomial distribution)
+        variance_ar_per_category = (observed_probs_per_category * (
+                    1 - observed_probs_per_category)) / samples_per_category
+        # standard deviation of observed outcome per category
+        stddev_ar_per_category = np.sqrt(variance_ar_per_category)
+
+        # Hosmer–Lemeshow goodness of fit (GOF) test
+        chi2_ar = np.sum(
+            ((observed_probs_per_category - predicted_probs_per_category) ** 2) / variance_ar_per_category)
+        df_ar = number_of_percentiles
+        p_value_ar = 1 - chi2.cdf(chi2_ar, df_ar)
+
+        # calculate the 95% confidence intervals
+        confidence_intervals_ar = []
+        for observed, stddev in zip(observed_probs_per_category, stddev_ar_per_category):
+            confidence_intervals_ar.append(wald_confidence_interval(observed, stddev))
+
+        # relative risk (rr) calibration
+        # mean observed outcome per category
+        mean_observed_prob = self.study_data["observed_outcome"].groupby(
+            self.study_data["linear_predictors_category"]).mean().mean()
+
+        # mean observed relative risks per category
+        observed_rr_per_category = self.study_data["observed_outcome"].groupby(
+            self.study_data["linear_predictors_category"]).mean().values / mean_observed_prob
+        # mean predicted relative risks per category
+        predicted_rr_per_category = self.study_data["risk_estimates"].groupby(
+            self.study_data["linear_predictors_category"]).mean().values / self.study_data["risk_estimates"].groupby(
+            self.study_data["linear_predictors_category"]).mean().mean()
+
+        stddev_log_rr_per_category, chi2_log_rr, variance_matrix_ar, varcov_log_rr_per_category = \
+            calculate_rr_stddev_and_chi2(variance_ar_per_category, number_of_percentiles, mean_observed_prob,
+                                         observed_probs_per_category, observed_rr_per_category,
+                                         predicted_rr_per_category)
+        df_rr = number_of_percentiles - 1
+        p_value_rr = 1 - chi2.cdf(chi2_log_rr, df_rr)
+
+        # calculate the 95% confidence intervals
+        confidence_intervals_rr = []
+        for observed, stddev in zip(observed_rr_per_category, stddev_log_rr_per_category):
+            confidence_intervals_rr.append(np.exp(wald_confidence_interval(np.log(observed), stddev)).tolist())
+
+        # store results to output
+        self.results.append_risk_to_category_specific_calibration(
+            observed_probs_per_category, predicted_probs_per_category,
+            [lower for lower, _ in confidence_intervals_ar], [upper for _, upper in confidence_intervals_ar],
+            "absolute_risk"
+        )
+        self.results.append_calibration_statistical_test_results(
+            "absolute_risk", "Hosmer–Lemeshow goodness of fit (GOF) test for Absolute Risk",
+            "chi_square", float(chi2_ar), p_value_ar, df_ar,
+            variance_matrix_ar
+        )
+
+        self.results.append_risk_to_category_specific_calibration(
+            observed_rr_per_category, predicted_rr_per_category,
+            [lower for lower, _ in confidence_intervals_rr], [upper for _, upper in confidence_intervals_rr],
+            "relative_risk"
+        )
+        self.results.append_calibration_statistical_test_results(
+            "relative_risk", "Goodness of fit (GOF) test for Relative Risk",
+            "chi_square", float(chi2_log_rr), p_value_rr, df_rr,
+            varcov_log_rr_per_category
+        )
