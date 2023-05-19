@@ -4,7 +4,6 @@ from typing import Union, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 from scipy.stats import chi2
-from statsmodels.stats.weightstats import DescrStatsW
 
 from icare import check_errors, utils
 from icare.absolute_risk_model import AbsoluteRiskModel, format_rates
@@ -36,65 +35,65 @@ class ModelValidationResults:
 
     def set_reference_risks(self, reference_absolute_risk: List[float], reference_risk_score: List[float]):
         self.reference = dict()
-        self.reference["absolute_risk"] = reference_absolute_risk
-        self.reference["risk_score"] = reference_risk_score
+        self.reference['absolute_risk'] = reference_absolute_risk
+        self.reference['risk_score'] = reference_risk_score
 
     def set_incidence_rates(self, study_ages: List[int], study_incidence: List[float],
                             population_incidence_rates_path: Union[str, pathlib.Path, None] = None) -> None:
         self.incidence_rates = pd.DataFrame({
-            "age": study_ages,
-            "study_rate": study_incidence
+            'age': study_ages,
+            'study_rate': study_incidence
         })
 
         if population_incidence_rates_path is not None:
             disease_incidence_rates = format_rates(utils.read_file_to_dataframe(population_incidence_rates_path))
             population_incidence_rates = pd.DataFrame({
-                "age": disease_incidence_rates.index,
-                "population_rate": disease_incidence_rates.values
+                'age': disease_incidence_rates.index,
+                'population_rate': disease_incidence_rates.values
             })
 
-            self.incidence_rates = pd.merge(population_incidence_rates, self.incidence_rates, how="left", on="age")
+            self.incidence_rates = pd.merge(population_incidence_rates, self.incidence_rates, how='left', on='age')
 
     def set_auc(self, auc: float, variance: float, lower_ci: float, upper_ci: float) -> None:
         self.auc = {
-            "auc": auc,
-            "variance": variance,
-            "lower_ci": lower_ci,
-            "upper_ci": upper_ci
+            'auc': auc,
+            'variance': variance,
+            'lower_ci': lower_ci,
+            'upper_ci': upper_ci
         }
 
     def set_expected_by_observed_ratio(self, ratio: float, lower_ci: float, upper_ci: float) -> None:
         self.expected_by_observed_ratio = {
-            "ratio": ratio,
-            "lower_ci": lower_ci,
-            "upper_ci": upper_ci
+            'ratio': ratio,
+            'lower_ci': lower_ci,
+            'upper_ci': upper_ci
         }
 
     def init_calibration(self, score_categories: List[str]) -> None:
         self.category_specific_calibration = pd.DataFrame(index=score_categories)
-        self.category_specific_calibration.index.name = "category"
+        self.category_specific_calibration.index.name = 'category'
         self.calibration = dict()
 
     def append_risk_to_category_specific_calibration(
             self, observed_risks: List[float], predicted_risks: List[float],
             lower_cis: List[float], upper_cis: List[float], risk_name: str) -> None:
-        self.category_specific_calibration["observed_" + risk_name] = observed_risks
-        self.category_specific_calibration["predicted_" + risk_name] = predicted_risks
-        self.category_specific_calibration["lower_ci_" + risk_name] = lower_cis
-        self.category_specific_calibration["upper_ci_" + risk_name] = upper_cis
+        self.category_specific_calibration['observed_' + risk_name] = observed_risks
+        self.category_specific_calibration['predicted_' + risk_name] = predicted_risks
+        self.category_specific_calibration['lower_ci_' + risk_name] = lower_cis
+        self.category_specific_calibration['upper_ci_' + risk_name] = upper_cis
 
     def append_calibration_statistical_test_results(
             self, score_name: str, method: str, test_statistic_name: str, test_statistic: float, p_value: float,
             df: int, variance: np.ndarray) -> None:
         self.calibration[score_name] = {
-            "method": method,
-            "p_value": p_value,
-            "variance": variance.tolist()
+            'method': method,
+            'p_value': p_value,
+            'variance': variance.tolist()
         }
-        self.calibration[score_name]["statistic"] = dict()
-        self.calibration[score_name]["statistic"][test_statistic_name] = test_statistic
-        self.calibration[score_name]["parameter"] = dict()
-        self.calibration[score_name]["parameter"]["degrees_of_freedom"] = df
+        self.calibration[score_name]['statistic'] = dict()
+        self.calibration[score_name]['statistic'][test_statistic_name] = test_statistic
+        self.calibration[score_name]['parameter'] = dict()
+        self.calibration[score_name]['parameter']['degrees_of_freedom'] = df
 
 
 def get_absolute_risk_parameters(icare_model_parameters: dict) -> dict:
@@ -102,23 +101,23 @@ def get_absolute_risk_parameters(icare_model_parameters: dict) -> dict:
     absolute_risk_parameters = dict()
 
     absolute_risk_parameter_list = [
-        "apply_age_start", "apply_age_interval_length", "age_specific_disease_incidence_rates_path", "formula_path",
-        "snp_info_path", "log_relative_risk_path", "reference_dataset_path",
-        "model_reference_dataset_weights_variable_name", "age_specific_competing_incidence_rates_path",
-        "model_family_history_variable_name", "num_imputations", "covariate_profile_path", "snp_profile_path",
-        "return_reference_risks", "seed"
+        'apply_age_start', 'apply_age_interval_length', 'age_specific_disease_incidence_rates_path', 'formula_path',
+        'snp_info_path', 'log_relative_risk_path', 'reference_dataset_path',
+        'model_reference_dataset_weights_variable_name', 'age_specific_competing_incidence_rates_path',
+        'model_family_history_variable_name', 'num_imputations', 'covariate_profile_path', 'snp_profile_path',
+        'return_reference_risks', 'seed'
     ]
 
     icare_model_parameter_list = [
-        "apply_age_start", "apply_age_interval_length", "model_disease_incidence_rates_path",
-        "model_covariate_formula_path", "model_snp_info_path", "model_log_relative_risk_path",
-        "model_reference_dataset_path", "model_reference_dataset_weights_variable_name",
-        "model_competing_incidence_rates_path", "model_family_history_variable_name", "num_imputations",
-        "apply_covariate_profile_path", "apply_snp_profile_path", "return_reference_risks", "seed"
+        'apply_age_start', 'apply_age_interval_length', 'model_disease_incidence_rates_path',
+        'model_covariate_formula_path', 'model_snp_info_path', 'model_log_relative_risk_path',
+        'model_reference_dataset_path', 'model_reference_dataset_weights_variable_name',
+        'model_competing_incidence_rates_path', 'model_family_history_variable_name', 'num_imputations',
+        'apply_covariate_profile_path', 'apply_snp_profile_path', 'return_reference_risks', 'seed'
     ]
 
     for absolute_risk_param, icare_param in zip(absolute_risk_parameter_list, icare_model_parameter_list):
-        default_value = 5 if absolute_risk_param == "num_imputations" else None
+        default_value = 5 if absolute_risk_param == 'num_imputations' else None
         absolute_risk_parameters[absolute_risk_param] = icare_model_parameters[icare_param] \
             if icare_param in icare_model_parameters else default_value
 
@@ -129,6 +128,97 @@ def wald_confidence_interval(estimate, standard_error, z=1.96):
     return estimate - z * standard_error, estimate + z * standard_error
 
 
+def weighted_table(x, weights=None, type='list', normalize_weights=False, remove_missing=True):
+    if weights is None:
+        weights = np.ones(len(x))
+
+    if isinstance(x, pd.Series):
+        x_values = x.values
+    else:
+        x_values = x
+
+    na_indices = np.isnan(x_values + weights)
+    if remove_missing:
+        x_values = x_values[~na_indices]
+        weights = weights[~na_indices]
+
+    n = len(x_values)
+    if normalize_weights:
+        weights = weights * n / np.sum(weights)
+
+    i = np.argsort(x_values)
+    x_values = x_values[i]
+    weights = weights[i]
+
+    if len(np.unique(x_values)) < len(x_values):
+        weights = pd.Series(weights).groupby(x_values).sum().values
+        x_values = np.unique(x_values)
+
+    if type == 'list':
+        return {'x': x_values, 'sum_of_weights': weights}
+    else:
+        return pd.Series(weights, index=x_values)
+
+
+def weighted_ecdf(x, weights=None, type='i/n', normalize_weights=False, remove_missing=True):
+    a = b = 0
+    if type == '(i-1)/(n-1)':
+        a = b = -1
+    elif type == 'i/(n+1)':
+        a = 0
+        b = 1
+
+    if weights is None:
+        cumu = pd.Series(x).value_counts(sort=False).sort_index().cumsum().values
+        x_values = np.sort(np.unique(x))
+        cdf = (cumu + a) / (cumu[-1] + b)
+        if cdf[0] > 0:
+            x_values = np.insert(x_values, 0, x_values[0])
+            cdf = np.insert(cdf, 0, 0)
+        return {'x': x_values, 'ecdf': cdf}
+    else:
+        w = weighted_table(x, weights, normalize_weights=normalize_weights, remove_missing=remove_missing)
+        cumu = np.cumsum(w['sum_of_weights'])
+        cdf = (cumu + a) / (cumu[-1] + b)
+        if cdf[0] > 0:
+            w['x'] = np.insert(w['x'], 0, w['x'][0])
+            cdf = np.insert(cdf, 0, 0)
+        return {'x': w['x'], 'ecdf': cdf}
+
+
+def weighted_quantile(x, probs, weights=None, type='quantile', normalize_weights=False, remove_missing=True):
+    if weights is None:
+        return pd.Series(np.quantile(x, q=probs), index=(np.array(probs) * 100).astype(str) + '%')
+
+    if np.any((probs < 0) | (probs > 1)):
+        raise ValueError("Probabilities must be between 0 and 1 inclusive")
+
+    nams = (np.round(probs * 100, 2 if len(probs) > 1 else 2 - np.log10(np.ptp(probs)))).astype(str)
+    nams = [name + "%" for name in nams]
+
+    i = np.isnan(weights) | (weights == 0)
+    if np.any(i):
+        x = x[~i]
+        weights = weights[~i]
+    if type == 'quantile':
+        w = weighted_table(x, weights, remove_missing=remove_missing, normalize_weights=normalize_weights)
+        x_values = w['x']
+        wts = w['sum_of_weights']
+        n = np.sum(wts)
+        order = 1 + (n - 1) * probs
+        low = np.maximum(np.floor(order), 1)
+        high = np.minimum(low + 1, n)
+        order = order % 1
+        allq = np.interp(np.concatenate((low, high)), np.cumsum(wts), x_values, right=np.nan)
+        k = len(probs)
+        quantiles = (1 - order)*allq[:k] + order*allq[k:]
+        quantiles = np.round(quantiles)
+        return pd.Series(quantiles, index=nams)
+    else:
+        w = weighted_ecdf(x, weights, remove_missing=remove_missing, type=type, normalize_weights=normalize_weights)
+        return pd.Series(np.interp(probs, w['ecdf'], w['x'], right=np.nan), index=nams)
+
+
 def reposition(cut, x, na_rm):
     x_ge_cut = x >= cut
     if np.sum(x_ge_cut) == 0:
@@ -137,11 +227,12 @@ def reposition(cut, x, na_rm):
         return np.min(x[x_ge_cut]) if na_rm else np.nanmin(x[x_ge_cut])
 
 
-def weighted_quantcut(x: pd.Series, weights: Optional[np.array] = None, q: Union[int, List[float]] = 10) -> pd.Series:
+def weighted_quantcut(x: pd.Series, weights: Optional[np.array] = None, q: Union[int, List[float]] = 10,
+                      remove_missing: bool = True) -> pd.Series:
     if isinstance(q, int):
         q = np.linspace(0, 1, num=q + 1)
 
-    cutoffs = DescrStatsW(x, weights=weights, ddof=0).quantile(q, return_pandas=False)
+    cutoffs = weighted_quantile(x, weights=weights, probs=q, type='i/n', remove_missing=remove_missing)
 
     duplicate_cutoffs = pd.Series(cutoffs).duplicated()
     if any(duplicate_cutoffs):
@@ -232,17 +323,17 @@ class ModelValidation:
         # load study data and set data types
         self.study_data = pd.read_csv(study_data_path)
 
-        mandatory_columns = ["observed_outcome", "study_entry_age", "study_exit_age", "time_of_onset"]
+        mandatory_columns = ['observed_outcome', 'study_entry_age', 'study_exit_age', 'time_of_onset']
         check_errors.check_data_mandatory_columns(self.study_data, mandatory_columns)
-        integer_columns = ["observed_outcome", "study_entry_age", "study_exit_age"]
+        integer_columns = ['observed_outcome', 'study_entry_age', 'study_exit_age']
         self.study_data[integer_columns] = self.study_data[integer_columns].astype(int)
-        float_columns = ["time_of_onset"]
+        float_columns = ['time_of_onset']
         self.study_data[float_columns] = self.study_data[float_columns].astype(float)
 
         optional_columns = []
-        if "sampling_weights" in self.study_data.columns:
+        if 'sampling_weights' in self.study_data.columns:
             self.nested_case_control_study = True
-            optional_columns.append("sampling_weights")
+            optional_columns.append('sampling_weights')
         if predicted_risk_variable_name is not None:
             self.predicted_risk_variable_name = predicted_risk_variable_name
             optional_columns.append(predicted_risk_variable_name)
@@ -253,65 +344,65 @@ class ModelValidation:
             check_errors.check_data_optional_columns(self.study_data, optional_columns)
             self.study_data[optional_columns] = self.study_data[optional_columns].astype(float)
 
-        if "id" in self.study_data.columns:
-            self.study_data.set_index("id", inplace=True)
+        if 'id' in self.study_data.columns:
+            self.study_data.set_index('id', inplace=True)
 
         if self.nested_case_control_study:
-            self.study_data["frequency"] = 1 / self.study_data["sampling_weights"]
+            self.study_data['frequency'] = 1 / self.study_data['sampling_weights']
 
         # check data
         check_errors.check_study_data(self.study_data)
-        self.study_data["observed_followup"] = self.study_data["study_exit_age"] - self.study_data["study_entry_age"]
+        self.study_data['observed_followup'] = self.study_data['study_exit_age'] - self.study_data['study_entry_age']
 
         # censor cases where the time of onset is after the observed follow-up period
-        onset_after_followup = (self.study_data["observed_outcome"] == 1) & \
-                               (self.study_data["time_of_onset"] > self.study_data["observed_followup"])
-        self.study_data.loc[onset_after_followup, "observed_outcome"] = 0
-        self.study_data.loc[onset_after_followup, "time_of_onset"] = float("inf")
+        onset_after_followup = (self.study_data['observed_outcome'] == 1) & \
+                               (self.study_data['time_of_onset'] > self.study_data['observed_followup'])
+        self.study_data.loc[onset_after_followup, 'observed_outcome'] = 0
+        self.study_data.loc[onset_after_followup, 'time_of_onset'] = float('inf')
 
     def _set_predicted_time_interval(self, predicted_risk_interval: Union[str, int, List[int]]) -> None:
         check_errors.check_validation_time_interval_type(predicted_risk_interval, self.study_data)
 
         if isinstance(predicted_risk_interval, str):
-            self.results.set_risk_prediction_interval("Observed follow-up")
-            self.study_data["predicted_risk_interval"] = self.study_data["observed_followup"]
+            self.results.set_risk_prediction_interval('Observed follow-up')
+            self.study_data['predicted_risk_interval'] = self.study_data['observed_followup']
         elif isinstance(predicted_risk_interval, int):
             if predicted_risk_interval == 1:
-                self.results.set_risk_prediction_interval("1 year")
+                self.results.set_risk_prediction_interval('1 year')
             else:
-                self.results.set_risk_prediction_interval(f"{predicted_risk_interval} years")
-            self.study_data["predicted_risk_interval"] = predicted_risk_interval
+                self.results.set_risk_prediction_interval(f'{predicted_risk_interval} years')
+            self.study_data['predicted_risk_interval'] = predicted_risk_interval
         else:
-            self.study_data["predicted_risk_interval"] = predicted_risk_interval
-            if len(self.study_data["predicted_risk_interval"].unique()) == 1:
+            self.study_data['predicted_risk_interval'] = predicted_risk_interval
+            if len(self.study_data['predicted_risk_interval'].unique()) == 1:
                 self.results.set_risk_prediction_interval(
                     f"{self.study_data['predicted_risk_interval'].unique()[0]} years")
             else:
-                self.results.set_risk_prediction_interval("Varies across individuals")
+                self.results.set_risk_prediction_interval('Varies across individuals')
 
     def _calculate_followup_period(self) -> None:
-        self.study_data["followup"] = self.study_data["observed_followup"]
+        self.study_data['followup'] = self.study_data['observed_followup']
 
         # follow-up period is the minimum of the predicted risk interval and the observed follow-up period
-        onset_within_interval = (self.study_data["time_of_onset"] <= self.study_data["predicted_risk_interval"])
-        interval_smaller_than_followup = (self.study_data["predicted_risk_interval"] <=
-                                          self.study_data["observed_followup"])
-        self.study_data.loc[onset_within_interval & interval_smaller_than_followup, "followup"] = \
-            self.study_data.loc[onset_within_interval & interval_smaller_than_followup, "predicted_risk_interval"]
+        onset_within_interval = (self.study_data['time_of_onset'] <= self.study_data['predicted_risk_interval'])
+        interval_smaller_than_followup = (self.study_data['predicted_risk_interval'] <=
+                                          self.study_data['observed_followup'])
+        self.study_data.loc[onset_within_interval & interval_smaller_than_followup, 'followup'] = \
+            self.study_data.loc[onset_within_interval & interval_smaller_than_followup, 'predicted_risk_interval']
 
         # censor cases when the time of onset is after the predicted risk interval
-        onset_after_interval = (self.study_data["time_of_onset"] > self.study_data["predicted_risk_interval"])
-        onset_within_followup = (self.study_data["time_of_onset"] <= self.study_data["observed_followup"])
-        self.study_data.loc[onset_after_interval & onset_within_followup, "observed_outcome"] = 0
-        self.study_data.loc[onset_after_interval & onset_within_followup, "followup"] = \
-            self.study_data.loc[onset_after_interval & onset_within_followup, "predicted_risk_interval"]
+        onset_after_interval = (self.study_data['time_of_onset'] > self.study_data['predicted_risk_interval'])
+        onset_within_followup = (self.study_data['time_of_onset'] <= self.study_data['observed_followup'])
+        self.study_data.loc[onset_after_interval & onset_within_followup, 'observed_outcome'] = 0
+        self.study_data.loc[onset_after_interval & onset_within_followup, 'followup'] = \
+            self.study_data.loc[onset_after_interval & onset_within_followup, 'predicted_risk_interval']
 
         # censor cases when onset is after the observed follow-up period
-        observed_longer_than_interval = (self.study_data["observed_followup"] >=
-                                         self.study_data["predicted_risk_interval"])
-        onset_after_followup = (self.study_data["time_of_onset"] > self.study_data["observed_followup"])
-        self.study_data.loc[observed_longer_than_interval & onset_after_followup, "followup"] = \
-            self.study_data.loc[observed_longer_than_interval & onset_after_followup, "predicted_risk_interval"]
+        observed_longer_than_interval = (self.study_data['observed_followup'] >=
+                                         self.study_data['predicted_risk_interval'])
+        onset_after_followup = (self.study_data['time_of_onset'] > self.study_data['observed_followup'])
+        self.study_data.loc[observed_longer_than_interval & onset_after_followup, 'followup'] = \
+            self.study_data.loc[observed_longer_than_interval & onset_after_followup, 'predicted_risk_interval']
 
     def _calculate_risks(self, icare_model_parameters: Optional[dict], predicted_risk_variable_name: Optional[str],
                          linear_predictor_variable_name: Optional[str], seed: Optional[int] = None) -> None:
@@ -324,18 +415,18 @@ class ModelValidation:
               "They will be calculated using iCARE.")
 
         absolute_risk_parameters = get_absolute_risk_parameters(icare_model_parameters)
-        absolute_risk_parameters["apply_age_start"] = self.study_data["study_entry_age"].tolist()
-        absolute_risk_parameters["apply_age_interval_length"] = self.study_data["followup"].tolist()
-        absolute_risk_parameters["return_reference_risks"] = True
-        absolute_risk_parameters["seed"] = seed
+        absolute_risk_parameters['apply_age_start'] = self.study_data['study_entry_age'].tolist()
+        absolute_risk_parameters['apply_age_interval_length'] = self.study_data['followup'].tolist()
+        absolute_risk_parameters['return_reference_risks'] = True
+        absolute_risk_parameters['seed'] = seed
 
         absolute_risk_model = AbsoluteRiskModel(**absolute_risk_parameters)
         absolute_risk_model.compute_absolute_risks()
 
-        self.predicted_risk_variable_name = "risk_estimates"
-        self.study_data["risk_estimates"] = absolute_risk_model.results.risk_estimates.values
-        self.linear_predictor_variable_name = "linear_predictors"
-        self.study_data["linear_predictors"] = absolute_risk_model.results.linear_predictors.values
+        self.predicted_risk_variable_name = 'risk_estimates'
+        self.study_data['risk_estimates'] = absolute_risk_model.results.risk_estimates.values
+        self.linear_predictor_variable_name = 'linear_predictors'
+        self.study_data['linear_predictors'] = absolute_risk_model.results.linear_predictors.values
 
     def _calculate_reference_risks(self, icare_model_parameters: Optional[dict],
                                    reference_entry_age: Union[int, List[int], None],
@@ -364,12 +455,12 @@ class ModelValidation:
                                   for entry_age, exit_age in zip(reference_entry_age, reference_exit_age)]
 
         absolute_risk_parameters = get_absolute_risk_parameters(icare_model_parameters)
-        absolute_risk_parameters["apply_age_start"] = reference_entry_age
-        absolute_risk_parameters["apply_age_interval_length"] = reference_followup
-        absolute_risk_parameters["covariate_profile_path"] = absolute_risk_parameters["reference_dataset_path"]
-        absolute_risk_parameters["snp_profile_path"] = None
-        absolute_risk_parameters["return_reference_risks"] = True
-        absolute_risk_parameters["seed"] = seed
+        absolute_risk_parameters['apply_age_start'] = reference_entry_age
+        absolute_risk_parameters['apply_age_interval_length'] = reference_followup
+        absolute_risk_parameters['covariate_profile_path'] = absolute_risk_parameters['reference_dataset_path']
+        absolute_risk_parameters['snp_profile_path'] = None
+        absolute_risk_parameters['return_reference_risks'] = True
+        absolute_risk_parameters['seed'] = seed
 
         absolute_risk_model = AbsoluteRiskModel(**absolute_risk_parameters)
         absolute_risk_model.compute_absolute_risks()
@@ -381,14 +472,14 @@ class ModelValidation:
     def _calculate_study_incidence_rates(self, icare_model_parameters: Optional[dict]) -> None:
         age_specific_study_incidence = []
 
-        age_of_onset = self.study_data["study_entry_age"] + self.study_data["time_of_onset"]
-        ages = range(self.study_data["study_entry_age"].min() + 1, self.study_data["study_exit_age"].max())
-        frequency = self.study_data["frequency"].values \
+        age_of_onset = self.study_data['study_entry_age'] + self.study_data['time_of_onset']
+        ages = range(self.study_data['study_entry_age'].min() + 1, self.study_data['study_exit_age'].max())
+        frequency = self.study_data['frequency'].values \
             if self.nested_case_control_study else np.ones(len(self.study_data))
 
         for age in ages:
-            entered_before_age = self.study_data["study_entry_age"] <= age - 1
-            not_exited_before_age = self.study_data["study_exit_age"] >= age
+            entered_before_age = self.study_data['study_entry_age'] <= age - 1
+            not_exited_before_age = self.study_data['study_exit_age'] >= age
             in_study_at_age = entered_before_age & not_exited_before_age
             onset_at_age = (age_of_onset >= age) & (age_of_onset < age + 1)
             onset_at_or_after_age = age_of_onset >= age
@@ -401,18 +492,18 @@ class ModelValidation:
 
         population_incidence_rates_path = None
         if icare_model_parameters is not None:
-            if "model_disease_incidence_rates_path" in icare_model_parameters:
-                population_incidence_rates_path = icare_model_parameters["model_disease_incidence_rates_path"]
+            if 'model_disease_incidence_rates_path' in icare_model_parameters:
+                population_incidence_rates_path = icare_model_parameters['model_disease_incidence_rates_path']
         self.results.set_incidence_rates(list(ages), age_specific_study_incidence, population_incidence_rates_path)
 
     def _calculate_inverse_probability_weighted_auc(self, indicator: np.array) -> Tuple[float, float]:
         # uses the inverse probability weighting (IPW) method to calculate the AUC
-        cases = self.study_data["observed_outcome"] == 1
-        controls = self.study_data["observed_outcome"] == 0
+        cases = self.study_data['observed_outcome'] == 1
+        controls = self.study_data['observed_outcome'] == 0
 
         # calculate the weight matrix
-        frequency_cases = self.study_data.loc[cases, "frequency"].values
-        frequency_controls = self.study_data.loc[controls, "frequency"].values
+        frequency_cases = self.study_data.loc[cases, 'frequency'].values
+        frequency_controls = self.study_data.loc[controls, 'frequency'].values
         weight_matrix = np.kron(frequency_controls, frequency_cases).reshape(
             len(frequency_controls), len(frequency_cases))
 
@@ -423,14 +514,14 @@ class ModelValidation:
         mean_s0_indicator = np.average(indicator, axis=0, weights=frequency_controls)
         mean_s1_indicator = np.average(indicator, axis=1, weights=frequency_cases)
 
-        sampling_weights_cases = self.study_data.loc[cases, "sampling_weights"].values
+        sampling_weights_cases = self.study_data.loc[cases, 'sampling_weights'].values
         term_1_1 = np.average((mean_s0_indicator - np.average(mean_s0_indicator, weights=frequency_cases)) ** 2,
                               weights=frequency_cases)
         term_1_2 = np.average((mean_s0_indicator - auc) ** 2 * (1 - sampling_weights_cases) / sampling_weights_cases,
                               weights=frequency_cases)
         term_1 = term_1_1 + term_1_2
 
-        sampling_weights_controls = self.study_data.loc[controls, "sampling_weights"].values
+        sampling_weights_controls = self.study_data.loc[controls, 'sampling_weights'].values
         term_2_1 = np.average((mean_s1_indicator - np.average(mean_s1_indicator, weights=frequency_controls)) ** 2,
                               weights=frequency_controls)
         term_2_2 = np.average(
@@ -443,8 +534,8 @@ class ModelValidation:
         return auc, auc_variance
 
     def _calculate_auc(self) -> None:
-        cases = self.study_data["observed_outcome"] == 1
-        controls = self.study_data["observed_outcome"] == 0
+        cases = self.study_data['observed_outcome'] == 1
+        controls = self.study_data['observed_outcome'] == 0
 
         score_cases = self.study_data.loc[cases, self.linear_predictor_variable_name].values
         score_controls = self.study_data.loc[controls, self.linear_predictor_variable_name].values
@@ -469,24 +560,24 @@ class ModelValidation:
 
     def _calculate_expected_by_observed_ratio(self) -> None:
         if self.nested_case_control_study:
-            expected = np.sum(self.study_data["risk_estimates"] * self.study_data["frequency"]) / np.sum(
-                self.study_data["frequency"])
-            observed = np.sum(self.study_data["observed_outcome"] * self.study_data["frequency"]) / np.sum(
-                self.study_data["frequency"])
+            expected = np.sum(self.study_data['risk_estimates'] * self.study_data['frequency']) / np.sum(
+                self.study_data['frequency'])
+            observed = np.sum(self.study_data['observed_outcome'] * self.study_data['frequency']) / np.sum(
+                self.study_data['frequency'])
 
             # variance of observed risk
             observed_risk_variance = \
                 (observed * (1 - observed) +
                  np.sum(
-                     (self.study_data["observed_outcome"] - observed) ** 2 *
-                     (1 - self.study_data["sampling_weights"]) / self.study_data["sampling_weights"] ** 2
-                 ) / np.sum(self.study_data["frequency"])) / np.sum(self.study_data["frequency"])
+                     (self.study_data['observed_outcome'] - observed) ** 2 *
+                     (1 - self.study_data['sampling_weights']) / self.study_data['sampling_weights'] ** 2
+                 ) / np.sum(self.study_data['frequency'])) / np.sum(self.study_data['frequency'])
         else:
-            expected = np.mean(self.study_data["risk_estimates"])
-            observed = np.mean(self.study_data["observed_outcome"])
+            expected = np.mean(self.study_data['risk_estimates'])
+            observed = np.mean(self.study_data['observed_outcome'])
 
             # variance of observed risk
-            observed_risk_variance = (observed * (1 - observed)) / len(self.study_data["risk_estimates"])
+            observed_risk_variance = (observed * (1 - observed)) / len(self.study_data['risk_estimates'])
 
         # expected by observed ratio
         expected_by_observed = expected / observed
@@ -501,21 +592,21 @@ class ModelValidation:
 
     def _categorize_risk_scores(self, cutoffs: Optional[List[float]], number_of_percentiles: int) -> None:
         if cutoffs is not None:
-            cutoffs = [np.min(self.study_data["linear_predictors"])] + cutoffs + \
-                      [np.max(self.study_data["linear_predictors"])]
-            self.study_data["linear_predictors_category"] = pd.cut(self.study_data["linear_predictors"],
+            cutoffs = [np.min(self.study_data['linear_predictors'])] + cutoffs + \
+                      [np.max(self.study_data['linear_predictors'])]
+            self.study_data['linear_predictors_category'] = pd.cut(self.study_data['linear_predictors'],
                                                                    bins=cutoffs, include_lowest=True)
         else:
             if self.nested_case_control_study:
-                self.study_data["linear_predictors_category"] = weighted_quantcut(
-                    self.study_data["linear_predictors"], self.study_data["frequency"], number_of_percentiles)
+                self.study_data['linear_predictors_category'] = weighted_quantcut(
+                    self.study_data['linear_predictors'], self.study_data['frequency'], number_of_percentiles)
             else:
-                self.study_data["linear_predictors_category"] = pd.qcut(
+                self.study_data['linear_predictors_category'] = pd.qcut(
                     self.study_data['linear_predictors'], q=number_of_percentiles)
 
     def _calculate_calibration(self, number_of_percentiles):
         self.results.init_calibration(
-            self.study_data["linear_predictors_category"].value_counts().sort_index().index.astype(str)
+            self.study_data['linear_predictors_category'].value_counts().sort_index().index.astype(str)
         )
 
         if self.nested_case_control_study:
@@ -524,15 +615,15 @@ class ModelValidation:
             self._calculate_risk_calibration(number_of_percentiles)
 
     def _calculate_risk_calibration(self, number_of_percentiles):
-        samples_per_category = self.study_data["linear_predictors_category"].value_counts().sort_index().values
+        samples_per_category = self.study_data['linear_predictors_category'].value_counts().sort_index().values
 
         # absolute risk (ar) calibration
         # mean observed outcome per category
-        observed_probs_per_category = self.study_data["observed_outcome"].groupby(
-            self.study_data["linear_predictors_category"]).mean().values
+        observed_probs_per_category = self.study_data['observed_outcome'].groupby(
+            self.study_data['linear_predictors_category']).mean().values
         # mean predicted outcome per category
-        predicted_probs_per_category = self.study_data["risk_estimates"].groupby(
-            self.study_data["linear_predictors_category"]).mean().values
+        predicted_probs_per_category = self.study_data['risk_estimates'].groupby(
+            self.study_data['linear_predictors_category']).mean().values
 
         # variance of observed outcome per category (using the variance of a binomial distribution)
         variance_ar_per_category = (observed_probs_per_category * (
@@ -553,16 +644,16 @@ class ModelValidation:
 
         # relative risk (rr) calibration
         # mean observed outcome per category
-        mean_observed_prob = self.study_data["observed_outcome"].groupby(
-            self.study_data["linear_predictors_category"]).mean().mean()
+        mean_observed_prob = self.study_data['observed_outcome'].groupby(
+            self.study_data['linear_predictors_category']).mean().mean()
 
         # mean observed relative risks per category
-        observed_rr_per_category = self.study_data["observed_outcome"].groupby(
-            self.study_data["linear_predictors_category"]).mean().values / mean_observed_prob
+        observed_rr_per_category = self.study_data['observed_outcome'].groupby(
+            self.study_data['linear_predictors_category']).mean().values / mean_observed_prob
         # mean predicted relative risks per category
-        predicted_rr_per_category = self.study_data["risk_estimates"].groupby(
-            self.study_data["linear_predictors_category"]).mean().values / self.study_data["risk_estimates"].groupby(
-            self.study_data["linear_predictors_category"]).mean().mean()
+        predicted_rr_per_category = self.study_data['risk_estimates'].groupby(
+            self.study_data['linear_predictors_category']).mean().values / self.study_data['risk_estimates'].groupby(
+            self.study_data['linear_predictors_category']).mean().mean()
 
         # variance and standard deviation of observed relative risks per category
         # chi-squared test statistic
@@ -582,49 +673,49 @@ class ModelValidation:
         self.results.append_risk_to_category_specific_calibration(
             observed_probs_per_category.tolist(), predicted_probs_per_category.tolist(),
             [lower for lower, _ in confidence_intervals_ar], [upper for _, upper in confidence_intervals_ar],
-            "absolute_risk"
+            'absolute_risk'
         )
         self.results.append_calibration_statistical_test_results(
-            "absolute_risk", "Hosmer–Lemeshow goodness of fit (GOF) test for Absolute Risk",
-            "chi_square", float(chi2_ar), p_value_ar, df_ar,
+            'absolute_risk', 'Hosmer–Lemeshow goodness of fit (GOF) test for Absolute Risk',
+            'chi_square', float(chi2_ar), p_value_ar, df_ar,
             variance_matrix_ar
         )
 
         self.results.append_risk_to_category_specific_calibration(
             observed_rr_per_category.tolist(), predicted_rr_per_category.tolist(),
             [lower for lower, _ in confidence_intervals_rr], [upper for _, upper in confidence_intervals_rr],
-            "relative_risk"
+            'relative_risk'
         )
         self.results.append_calibration_statistical_test_results(
-            "relative_risk", "Goodness of fit (GOF) test for Relative Risk",
-            "chi_square", float(chi2_log_rr), p_value_rr, df_rr,
+            'relative_risk', 'Goodness of fit (GOF) test for Relative Risk',
+            'chi_square', float(chi2_log_rr), p_value_rr, df_rr,
             var_cov_log_rr_per_category
         )
 
     def _calculate_risk_weighted_calibration(self, number_of_percentiles):
-        weights_per_category = self.study_data["frequency"].groupby(
-            self.study_data["linear_predictors_category"]).sum()
+        weights_per_category = self.study_data['frequency'].groupby(
+            self.study_data['linear_predictors_category']).sum()
 
         # absolute risk (ar) calibration
         # mean observed outcome per category
-        observed_probs_weighted = self.study_data["observed_outcome"] * self.study_data["frequency"]
+        observed_probs_weighted = self.study_data['observed_outcome'] * self.study_data['frequency']
         observed_probs_weighted_per_category = observed_probs_weighted.groupby(
-            self.study_data["linear_predictors_category"]).sum()
+            self.study_data['linear_predictors_category']).sum()
         observed_probs_per_category = observed_probs_weighted_per_category / weights_per_category
 
         # mean predicted outcome per category
-        predicted_probs_weighted = self.study_data["risk_estimates"] * self.study_data["frequency"]
+        predicted_probs_weighted = self.study_data['risk_estimates'] * self.study_data['frequency']
         predicted_probs_weighted_per_category = predicted_probs_weighted.groupby(
-            self.study_data["linear_predictors_category"]).sum()
+            self.study_data['linear_predictors_category']).sum()
         predicted_probs_per_category = predicted_probs_weighted_per_category / weights_per_category
 
         # variance of observed outcome per category (using the variance of a binomial distribution)
-        observed_risk_category = self.study_data["linear_predictors_category"].replace(
+        observed_risk_category = self.study_data['linear_predictors_category'].replace(
             dict(predicted_probs_per_category)).astype(float)
-        variance_correction_ar = (self.study_data["observed_outcome"] - observed_risk_category) ** 2 * (
-                    1 - self.study_data["sampling_weights"]) / (self.study_data["sampling_weights"] ** 2)
+        variance_correction_ar = (self.study_data['observed_outcome'] - observed_risk_category) ** 2 * (
+                    1 - self.study_data['sampling_weights']) / (self.study_data['sampling_weights'] ** 2)
         variance_correction_ar_per_category = variance_correction_ar.groupby(
-            self.study_data["linear_predictors_category"]).sum() / weights_per_category
+            self.study_data['linear_predictors_category']).sum() / weights_per_category
         variance_ar_per_category = (observed_probs_per_category * (1 - observed_probs_per_category) +
                                     variance_correction_ar_per_category) / weights_per_category
 
@@ -669,21 +760,21 @@ class ModelValidation:
         self.results.append_risk_to_category_specific_calibration(
             observed_probs_per_category.tolist(), predicted_probs_per_category.tolist(),
             [lower for lower, _ in confidence_intervals_ar], [upper for _, upper in confidence_intervals_ar],
-            "absolute_risk"
+            'absolute_risk'
         )
         self.results.append_calibration_statistical_test_results(
-            "absolute_risk", "Hosmer–Lemeshow goodness of fit (GOF) test for Absolute Risk",
-            "chi_square", float(chi2_ar), p_value_ar, df_ar,
+            'absolute_risk', 'Hosmer–Lemeshow goodness of fit (GOF) test for Absolute Risk',
+            'chi_square', float(chi2_ar), p_value_ar, df_ar,
             variance_matrix_ar
         )
 
         self.results.append_risk_to_category_specific_calibration(
             observed_rr_per_category.tolist(), predicted_rr_per_category.tolist(),
             [lower for lower, _ in confidence_intervals_rr], [upper for _, upper in confidence_intervals_rr],
-            "relative_risk"
+            'relative_risk'
         )
         self.results.append_calibration_statistical_test_results(
-            "relative_risk", "Goodness of fit (GOF) test for Relative Risk",
-            "chi_square", float(chi2_log_rr), p_value_rr, df_rr,
+            'relative_risk', 'Goodness of fit (GOF) test for Relative Risk',
+            'chi_square', float(chi2_log_rr), p_value_rr, df_rr,
             var_cov_log_rr_per_category
         )
