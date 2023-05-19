@@ -46,7 +46,7 @@ class CovariateModel:
         self._set_profile(profile)
         self._set_z_profile(formula, profile, reference_dataset)
         self.age_start, self.age_interval_length = utils.set_age_intervals(
-            age_start, age_interval_length, len(self.z_profile), "apply_covariate_profile_path")
+            age_start, age_interval_length, len(self.z_profile), 'apply_covariate_profile_path')
 
     def _set_population_distribution(self, formula: str, reference_dataset: pd.DataFrame) -> None:
         check_errors.check_covariate_reference_dataset(reference_dataset)

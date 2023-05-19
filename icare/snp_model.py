@@ -11,9 +11,9 @@ from icare.covariate_model import CovariateModel
 def extract_snp_info(info_path: Union[str, pathlib.Path, None]) -> Tuple[List[str], np.ndarray, np.ndarray]:
     info = utils.read_file_to_dataframe(info_path)
     check_errors.check_snp_info(info)
-    snp_names = info["snp_name"].tolist()
-    betas = np.log(info["snp_odds_ratio"].values)
-    frequencies = info["snp_freq"].values
+    snp_names = info['snp_name'].tolist()
+    betas = np.log(info['snp_odds_ratio'].values)
+    frequencies = info['snp_freq'].values
     return snp_names, betas, frequencies
 
 
@@ -142,7 +142,7 @@ class SnpModel:
         self._set_z_profile(profile_path, age_start, snp_names, covariate_model)
         self._set_profile()
         self.age_start, self.age_interval_length = utils.set_age_intervals(
-            age_start, age_interval_length, len(self.z_profile), "apply_snp_profile_path")
+            age_start, age_interval_length, len(self.z_profile), 'apply_snp_profile_path')
         self._set_family_history(covariate_model, family_history_variable_name)
 
         self._set_population_distribution(covariate_model, snp_names, betas, frequencies, num_imputations, seed)

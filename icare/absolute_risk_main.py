@@ -400,7 +400,7 @@ def compute_absolute_risk_split_interval(
         results = misc.combine_split_absolute_risk_results(
             results_before_cutpoint, results_after_cutpoint,
             return_linear_predictors, return_reference_risks,
-            "iCARE - absolute risk with split intervals"
+            'iCARE - absolute risk with split intervals'
         )
     else:
         results = compute_absolute_risk(
@@ -437,8 +437,8 @@ def validate_absolute_risk_model(
         reference_linear_predictors: Optional[List[float]] = None,
         number_of_percentiles: int = 10,
         linear_predictor_cutoffs: Optional[List[float]] = None,
-        dataset_name: str = "Example dataset",
-        model_name: str = "Example risk prediction model",
+        dataset_name: str = 'Example dataset',
+        model_name: str = 'Example risk prediction model',
         seed: Optional[int] = None) -> dict:
     """
     This function is used to validate absolute risk models.
@@ -566,4 +566,4 @@ def validate_absolute_risk_model(
                                        reference_entry_age, reference_exit_age, reference_predicted_risks,
                                        reference_linear_predictors, seed)
 
-    return misc.package_validation_results_to_dict(model_validation, "iCARE - absolute risk model validation")
+    return misc.package_validation_results_to_dict(model_validation, 'iCARE - absolute risk model validation')

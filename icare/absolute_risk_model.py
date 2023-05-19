@@ -24,10 +24,10 @@ class AbsoluteRiskResults:
         self.age_interval_end = self.age_interval_start + np.array(age_interval_length)
 
     def set_linear_predictors(self, linear_predictors: np.ndarray, indices: List) -> None:
-        self.linear_predictors = pd.Series(data=linear_predictors, index=indices, name="linear_predictors", dtype=float)
+        self.linear_predictors = pd.Series(data=linear_predictors, index=indices, name='linear_predictors', dtype=float)
 
     def set_risk_estimates(self, risk_estimates: np.ndarray, indices: List) -> None:
-        self.risk_estimates = pd.Series(data=risk_estimates, index=indices, name="risk_estimates", dtype=float)
+        self.risk_estimates = pd.Series(data=risk_estimates, index=indices, name='risk_estimates', dtype=float)
 
     def set_population_risks_per_interval(self, population_risks_per_interval):
         self.population_risks_per_interval = population_risks_per_interval
@@ -35,23 +35,23 @@ class AbsoluteRiskResults:
 
 def format_rates(rates: pd.DataFrame) -> pd.Series:
     if len(rates.columns) == 3:
-        age = list(range(rates["start_age"].min(), rates["end_age"].max() + 1))
+        age = list(range(rates['start_age'].min(), rates['end_age'].max() + 1))
         rate = np.zeros(len(age), dtype=float)
-        formatted_rates = pd.DataFrame({"age": age, "rate": rate})
+        formatted_rates = pd.DataFrame({'age': age, 'rate': rate})
 
         for _, row in rates.iterrows():
-            ages_within_interval = (formatted_rates["age"] >= row["start_age"]) & \
-                                   (formatted_rates["age"] < row["end_age"])
-            formatted_rates.loc[ages_within_interval, "rate"] = row["rate"] / len(formatted_rates[ages_within_interval])
+            ages_within_interval = (formatted_rates['age'] >= row['start_age']) & \
+                                   (formatted_rates['age'] < row['end_age'])
+            formatted_rates.loc[ages_within_interval, 'rate'] = row['rate'] / len(formatted_rates[ages_within_interval])
 
-        formatted_rates = pd.Series(data=formatted_rates["rate"].values, index=formatted_rates["age"], name="rate",
+        formatted_rates = pd.Series(data=formatted_rates['rate'].values, index=formatted_rates['age'], name='rate',
                                     dtype=float)
-        formatted_rates.index.name = "age"
+        formatted_rates.index.name = 'age'
 
         return formatted_rates
 
-    rates = pd.Series(data=rates["rate"].values, index=rates["age"], name="rate", dtype=float)
-    rates.index.name = "age"
+    rates = pd.Series(data=rates['rate'].values, index=rates['age'], name='rate', dtype=float)
+    rates.index.name = 'age'
 
     return rates
 
@@ -203,9 +203,9 @@ def model_free_impute_absolute_risk(age_interval_starts: np.ndarray, age_interva
             # If no variables are observed, the profile risk is set to the population average.
             if len(variables_observed) == 0:
                 imputation_averaged_population_risks = population_risks.reshape(
-                    -1, num_imputations, order="F").mean(axis=1)
+                    -1, num_imputations, order='F').mean(axis=1)
                 imputation_averaged_population_linear_predictors = population_linear_predictors.values.reshape(
-                    -1, num_imputations, order="F").mean(axis=1)
+                    -1, num_imputations, order='F').mean(axis=1)
 
                 profile_risks[profile_index] = np.average(
                     imputation_averaged_population_risks,
@@ -259,10 +259,10 @@ def calculate_population_risks_per_interval(
             np.repeat(age_interval_end, len(population_distribution)), baseline_hazards, competing_incidence_rates,
             betas, population_distribution)
         population_risks_this_interval = dict()
-        population_risks_this_interval["age_interval_start"] = int(age_interval_start)
-        population_risks_this_interval["age_interval_end"] = int(age_interval_end)
-        population_risks_this_interval["population_risks"] = population_risks_for_interval.reshape(
-            -1, num_imputations, order="F").mean(axis=1).tolist()
+        population_risks_this_interval['age_interval_start'] = int(age_interval_start)
+        population_risks_this_interval['age_interval_end'] = int(age_interval_end)
+        population_risks_this_interval['population_risks'] = population_risks_for_interval.reshape(
+            -1, num_imputations, order='F').mean(axis=1).tolist()
         population_risks_per_interval.append(population_risks_this_interval)
 
     return population_risks_per_interval
@@ -405,24 +405,24 @@ class AbsoluteRiskModel:
 
     def _set_baseline_hazards(self, marginal_disease_incidence_rates_path: Union[str, pathlib.Path]) -> None:
         marginal_disease_incidence_rates = utils.read_file_to_dataframe(marginal_disease_incidence_rates_path)
-        check_errors.check_rate_format(marginal_disease_incidence_rates, "model_disease_incidence_rates_path")
+        check_errors.check_rate_format(marginal_disease_incidence_rates, 'model_disease_incidence_rates_path')
         marginal_disease_incidence_rates = format_rates(marginal_disease_incidence_rates)
         check_errors.check_rate_covers_all_ages(marginal_disease_incidence_rates, self.age_start,
-                                                self.age_interval_length, "model_disease_incidence_rates_path")
+                                                self.age_interval_length, 'model_disease_incidence_rates_path')
         self.baseline_hazards = estimate_baseline_hazards(marginal_disease_incidence_rates, self.beta_estimates,
                                                           self.population_distribution, self.population_weights)
 
     def _set_competing_incidence_rates(self, competing_incidence_rates_path: Union[str, pathlib.Path, None]):
         if competing_incidence_rates_path is None:
             self.competing_incidence_rates = pd.Series(data=np.zeros(len(self.baseline_hazards)),
-                                                       index=self.baseline_hazards.index, name="rate", dtype=float)
-            self.competing_incidence_rates.index.name = "age"
+                                                       index=self.baseline_hazards.index, name='rate', dtype=float)
+            self.competing_incidence_rates.index.name = 'age'
         else:
             competing_incidence_rates = utils.read_file_to_dataframe(competing_incidence_rates_path)
-            check_errors.check_rate_format(competing_incidence_rates, "model_competing_incidence_rates_path")
+            check_errors.check_rate_format(competing_incidence_rates, 'model_competing_incidence_rates_path')
             competing_incidence_rates = format_rates(competing_incidence_rates)
             check_errors.check_rate_covers_all_ages(competing_incidence_rates, self.age_start, self.age_interval_length,
-                                                    "model_competing_incidence_rates_path")
+                                                    'model_competing_incidence_rates_path')
             self.competing_incidence_rates = competing_incidence_rates
 
     def compute_absolute_risks(self) -> AbsoluteRiskResults:

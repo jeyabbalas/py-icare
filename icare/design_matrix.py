@@ -24,7 +24,7 @@ def get_python_name_tokens(factor_name: str) -> str:
     return_string = False
     for token in python_tokenize(factor_name):
         token_type, token_name = token[0], token[1]
-        if token_type == tokenize.NAME and token_name == "Q":
+        if token_type == tokenize.NAME and token_name == 'Q':
             return_string = True
         elif token_type == tokenize.STRING and return_string:
             yield token_name[1:-1]
@@ -105,25 +105,25 @@ class DesignInfo:
 
 
 def remove_intercept(design_matrix: pd.DataFrame) -> pd.DataFrame:
-    if "Intercept" not in design_matrix.columns:
+    if 'Intercept' not in design_matrix.columns:
         return design_matrix
 
-    intercept_index = design_matrix.columns.get_loc("Intercept")
-    design_matrix.pop("Intercept")
+    intercept_index = design_matrix.columns.get_loc('Intercept')
+    design_matrix.pop('Intercept')
 
     # Update design info to reflect the removal of the intercept term
     design_info = DesignInfo(design_matrix)
-    design_info.column_names = [column_name for column_name in design_info.column_names if column_name != "Intercept"]
+    design_info.column_names = [column_name for column_name in design_info.column_names if column_name != 'Intercept']
     design_info.column_name_indexes = OrderedDict(
         [(key, value - 1 if value > intercept_index else value)
          for key, value in design_info.column_name_indexes.items()
-         if key != "Intercept"])
-    design_info.term_names = [term_name for term_name in design_info.term_names if term_name != "Intercept"]
+         if key != 'Intercept'])
+    design_info.term_names = [term_name for term_name in design_info.term_names if term_name != 'Intercept']
     design_info.term_name_slices = OrderedDict(
         [(key, slice(value.start - 1 if value.start > intercept_index else value.start,
                      value.stop - 1 if value.stop > intercept_index else value.stop))
          for key, value in design_info.term_name_slices.items()
-         if key != "Intercept"])
+         if key != 'Intercept'])
     design_info.terms = [term for term in design_info.terms if len(term.factors) != 0]
     design_info.term_slices = OrderedDict(
         [(key, slice(value.start - 1 if value.start > intercept_index else value.start,
@@ -139,7 +139,7 @@ def remove_intercept(design_matrix: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_design_matrix(formula: str, dataset: pd.DataFrame) -> pd.DataFrame:
-    design_matrix = dmatrix(formula, dataset, return_type="dataframe")
+    design_matrix = dmatrix(formula, dataset, return_type='dataframe')
     design_matrix = remove_intercept(design_matrix)
     design_matrix.design_info.original_column_names = list(dataset.columns)
 

@@ -8,20 +8,20 @@ from icare import check_errors
 
 
 def read_file_to_string(file: Union[str, pathlib.Path]) -> str:
-    with open(file, mode="r") as f:
-        return " ".join(f.read().splitlines())
+    with open(file, mode='r') as f:
+        return ' '.join(f.read().splitlines())
 
 
 def read_file_to_dict(file: Union[str, pathlib.Path]) -> dict:
-    with open(file, mode="r") as f:
+    with open(file, mode='r') as f:
         return json.load(f)
 
 
 def read_file_to_dataframe(file: Union[str, pathlib.Path], allow_integers: bool = True) -> pd.DataFrame:
     df = pd.read_csv(file)
 
-    if "id" in df.columns:
-        df.set_index("id", inplace=True)
+    if 'id' in df.columns:
+        df.set_index('id', inplace=True)
 
     if not allow_integers:  # to support nullable integer types
         numeric_columns = df.select_dtypes(include=['number']).columns
@@ -32,16 +32,16 @@ def read_file_to_dataframe(file: Union[str, pathlib.Path], allow_integers: bool 
 
 def read_file_to_dataframe_given_dtype(file, dtype) -> pd.DataFrame:
     header = pd.read_csv(file, nrows=1).columns
-    if "id" in header:
-        if isinstance(dtype, dict) and "id" not in dtype:
-            dtype = {"id": str, **dtype}
+    if 'id' in header:
+        if isinstance(dtype, dict) and 'id' not in dtype:
+            dtype = {'id': str, **dtype}
         else:
-            dtype = {"id": str, **{col: dtype for col in header if col != "id"}}
+            dtype = {'id': str, **{col: dtype for col in header if col != 'id'}}
 
     df = pd.read_csv(file, dtype=dtype)
 
-    if "id" in df.columns:
-        df.set_index("id", inplace=True)
+    if 'id' in df.columns:
+        df.set_index('id', inplace=True)
 
     return df
 
