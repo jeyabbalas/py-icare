@@ -148,6 +148,8 @@ def weighted_table(x, weights=None, type='list', normalize_weights=False, remove
 
     i = np.argsort(x_values)
     x_values = x_values[i]
+    if isinstance(weights, pd.Series):
+        i = weights.index[i]
     weights = weights[i]
 
     if len(np.unique(x_values)) < len(x_values):
@@ -219,24 +221,68 @@ def weighted_quantile(x, probs, weights=None, type='quantile', normalize_weights
         return pd.Series(np.interp(probs, w['ecdf'], w['x'], right=np.nan), index=nams)
 
 
-def reposition(cut, x, na_rm):
+def reposition(cut, x):
     x_ge_cut = x >= cut
     if np.sum(x_ge_cut) == 0:
         return cut
     else:
-        return np.min(x[x_ge_cut]) if na_rm else np.nanmin(x[x_ge_cut])
+        return np.min(x[x_ge_cut])
 
 
-def weighted_quantcut(x: pd.Series, weights: Optional[np.array] = None, q: Union[int, List[float]] = 10,
+def weighted_quantcut(x: pd.Series, weights: Union[pd.Series, np.array, None] = None, q: Union[int, List[float]] = 10,
                       remove_missing: bool = True) -> pd.Series:
     if isinstance(q, int):
-        q = np.linspace(0, 1, num=q + 1)
+        q = np.linspace(0, 1, num=q+1)
 
-    cutoffs = weighted_quantile(x, weights=weights, probs=q, type='i/n', remove_missing=remove_missing)
+    cutoffs = weighted_quantile(x.values, weights=weights.values, probs=q, type='i/n', remove_missing=remove_missing)
 
-    duplicate_cutoffs = pd.Series(cutoffs).duplicated()
-    if any(duplicate_cutoffs):
-        x_quantiles = pd.cut(x, bins=np.unique(cutoffs), include_lowest=True)
+    duplicates = cutoffs.duplicated()
+    if any(duplicates):
+        """
+        Duplicate quantile cut-offs implies that 'x' has a large repetition of values. In this case, we need to 
+        reposition the cut-offs to avoid empty intervals. The method here prevents bin intervals like these forming:
+        [(a, b], (b, b], (b, b], (b, c]]. Instead it creates: [(a, b), [b, b], (b, c]]. Here, 'b' is the duplicate
+        quantile bin. It gets its own designated interval, and the interval boundaries of the intervals around it are 
+        adjusted accordingly. 
+        """
+        # create designated intervals for duplicate quantile bins
+        x_quantiles = pd.Series(
+            x.map(lambda x_val: f"[{x_val}]" if x_val in cutoffs[duplicates].unique() else np.nan),
+            dtype='object')
+        new_cutoffs = cutoffs.groupby(cutoffs).apply(lambda cut: reposition(cut.name, x))
+        equals_duplicate_cutoff = x.isin(cutoffs[duplicates].unique())
+        x_quantiles[~equals_duplicate_cutoff] = pd.cut(
+            x[~equals_duplicate_cutoff], bins=new_cutoffs, include_lowest=True)
+
+        # adjust the boundaries of the intervals around the duplicate quantile bins
+        intervals = x_quantiles[np.argsort(x)].dropna().unique()
+        x_new_quantiles = pd.Categorical(x_quantiles, intervals, ordered=True)
+
+        bounds = [interval
+                  if isinstance(interval, pd.Interval)
+                  else pd.Interval(float(interval[1:-1]), float(interval[1:-1]), closed='both')
+                  for interval in intervals]
+
+        for i in range(len(bounds)):
+            if i > 0:
+                if bounds[i].left == bounds[i - 1].left and bounds[i].left == bounds[i - 1].right:
+                    closed = bounds[i].closed
+                    if closed == 'left':
+                        closed = 'neither'
+                    elif closed == 'both':
+                        closed = 'right'
+                    bounds[i] = pd.Interval(bounds[i].left, bounds[i].right, closed=closed)
+            if i < len(bounds) - 1:
+                if bounds[i].right == bounds[i + 1].left and bounds[i].right == bounds[i + 1].right:
+                    closed = bounds[i].closed
+                    if closed == 'right':
+                        closed = 'neither'
+                    elif closed == 'both':
+                        closed = 'left'
+                    bounds[i] = pd.Interval(bounds[i].left, bounds[i].right, closed=closed)
+
+        x_new_quantiles = x_new_quantiles.rename_categories([str(bound) for bound in bounds])
+        x_quantiles = pd.Series(x_new_quantiles, index=x.index)
     else:
         x_quantiles = pd.cut(x, bins=cutoffs, include_lowest=True)
 
@@ -551,7 +597,7 @@ class ModelValidation:
             # compute E_{S_0}[I(S_1 > S_0)] and E_{S_1}[I(S_1 > S_0)]
             mean_s0_indicator, mean_s1_indicator = np.mean(indicator, axis=0), np.mean(indicator, axis=1)
             auc_variance = np.var(mean_s0_indicator) / len(mean_s0_indicator) + \
-                           np.var(mean_s1_indicator) / len(mean_s1_indicator)
+                np.var(mean_s1_indicator) / len(mean_s1_indicator)
 
         # calculate the 95% confidence intervals
         lower_ci, upper_ci = wald_confidence_interval(auc, np.sqrt(auc_variance))
