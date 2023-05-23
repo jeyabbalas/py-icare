@@ -530,6 +530,11 @@ def validate_absolute_risk_model(
                     - 'linear_predictors_category': The category of the linear predictor for each individual in the
                     study data based on the user-input parameter value for 'linear_predictor_cutoffs', if provided,
                     else based on 'number_of_percentiles'.
+                A Pandas data frame can be reconstructed using the following code snippet:
+                    import pandas as pd
+                    results = validate_absolute_risk_model(...)
+                    study_data = pd.read_json(results['study_data'])
+                    study_data = study_data.set_index('id')
             3) 'reference':
                 A dictionary with two further keys: 'absolute_risk' and 'risk_score' containing the predicted
                 absolute risks and linear predictors for the reference population, respectively. This key is only
@@ -545,6 +550,7 @@ def validate_absolute_risk_model(
                     import pandas as pd
                     results = validate_absolute_risk_model(...)
                     incidence_rates = pd.read_json(results['incidence_rates'])
+                    incidence_rates = incidence_rates.set_index('age')
             5) 'auc':
                 A dictionary containing the area under the receiver operating characteristic curve (AUC), the variance,
                 and the 95% confidence interval for the AUC. The dictionary has the following keys: 'auc', 'variance',

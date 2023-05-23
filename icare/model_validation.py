@@ -719,7 +719,7 @@ class ModelValidation:
             'absolute_risk'
         )
         self.results.append_calibration_statistical_test_results(
-            'absolute_risk', 'Hosmer–Lemeshow goodness of fit (GOF) test for Absolute Risk',
+            'absolute_risk', 'Hosmer Lemeshow goodness of fit (GOF) test for Absolute Risk',
             'chi_square', float(chi2_ar), p_value_ar, df_ar,
             variance_matrix_ar
         )
