@@ -97,17 +97,16 @@ def combine_split_absolute_risk_results(results_before_cutpoint: dict, results_a
 def package_validation_results_to_dict(model_validation: ModelValidation, method_name: str) -> dict:
     results = dict()
 
-    results['risk_prediction_interval'] = model_validation.results.risk_prediction_interval
-    results['reference'] = model_validation.results.reference
+    results['info'] = model_validation.results.info
+    results['study_data'] = model_validation.study_data.to_json(orient='records')
+    if model_validation.results.reference is not None:
+        results['reference'] = model_validation.results.reference
     results['incidence_rates'] = model_validation.results.incidence_rates.to_json(orient='records')
     results['auc'] = model_validation.results.auc
     results['expected_by_observed_ratio'] = model_validation.results.expected_by_observed_ratio
     results['calibration'] = model_validation.results.calibration
     results['category_specific_calibration'] = model_validation.results.category_specific_calibration.to_json(
         orient='records')
-    results['dataset_name'] = model_validation.results.dataset_name
-    results['model_name'] = model_validation.results.model_name
-
     results['method'] = method_name
 
     return results

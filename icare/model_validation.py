@@ -10,14 +10,11 @@ from icare.absolute_risk_model import AbsoluteRiskModel, format_rates
 
 
 class ModelValidationResults:
-    risk_prediction_interval: str
-    reference: dict
+    info: dict = dict()
+    reference: Optional[dict] = None
     incidence_rates: pd.DataFrame
     auc: dict
     expected_by_observed_ratio: dict
-    dataset_name: str
-    model_name: str
-    subject_specific_predicted_absolute_risk: pd.Series
     category_specific_calibration: pd.DataFrame
     calibration: dict
 
@@ -25,13 +22,13 @@ class ModelValidationResults:
         pass
 
     def set_risk_prediction_interval(self, risk_prediction_interval: str):
-        self.risk_prediction_interval = risk_prediction_interval
+        self.info['risk_prediction_interval'] = risk_prediction_interval
 
     def set_dataset_name(self, dataset_name: str):
-        self.dataset_name = dataset_name
+        self.info['dataset_name'] = dataset_name
 
     def set_model_name(self, model_name: str):
-        self.model_name = model_name
+        self.info['model_name'] = model_name
 
     def set_reference_risks(self, reference_absolute_risk: List[float], reference_risk_score: List[float]):
         self.reference = dict()
@@ -241,13 +238,13 @@ def weighted_quantcut(x: pd.Series, weights: Union[pd.Series, np.array, None] = 
         """
         Duplicate quantile cut-offs implies that 'x' has a large repetition of values. In this case, we need to 
         reposition the cut-offs to avoid empty intervals. The method here prevents bin intervals like these forming:
-        [(a, b], (b, b], (b, b], (b, c]]. Instead it creates: [(a, b), [b, b], (b, c]]. Here, 'b' is the duplicate
+        [(a, b], (b, b], (b, b], (b, c]]. Instead it creates: [(a, b), {b}, (b, c]]. Here, 'b' is the duplicate
         quantile bin. It gets its own designated interval, and the interval boundaries of the intervals around it are 
         adjusted accordingly. 
         """
         # create designated intervals for duplicate quantile bins
         x_quantiles = pd.Series(
-            x.map(lambda x_val: f"[{x_val}]" if x_val in cutoffs[duplicates].unique() else np.nan),
+            x.map(lambda x_val: f"{{{x_val}}}" if x_val in cutoffs[duplicates].unique() else np.nan),
             dtype='object')
         new_cutoffs = cutoffs.groupby(cutoffs).apply(lambda cut: reposition(cut.name, x))
         equals_duplicate_cutoff = x.isin(cutoffs[duplicates].unique())

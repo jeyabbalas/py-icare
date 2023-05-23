@@ -506,17 +506,37 @@ def validate_absolute_risk_model(
         Fix a seed for reproducibility.
     :return:
         A dictionary with the following keys—
-            1) 'risk_prediction_interval':
-                A string describing the risk prediction interval e.g., "5 years". If the risk prediction is over the
-                total follow-up period of the study, this reads "Observed follow-up". If each individual is assigned a
-                different risk prediction interval, this reads "Varies across individuals".
-            2) 'reference':
+            1) 'info':
+                A dictionary with the following keys:
+                    - 'risk_prediction_interval': A string describing the risk prediction interval e.g., "5 years". If
+                    the risk prediction is over the total follow-up period of the study, this reads
+                    "Observed follow-up". If each individual is assigned a different risk prediction interval, this
+                    reads "Varies across individuals".
+                    - 'dataset_name': The name of the validation dataset.
+                    - 'model_name': The name of the absolute risk model being validated.
+            2) 'study_data':
+                A records-oriented JSON representation of the user-input study data. Additionally, the following
+                columns are added to the study data:
+                    - 'predicted_risk_interval': The risk prediction interval for each individual in the study data
+                    based on the user-input parameter value for 'predicted_risk_interval'.
+                    - 'followup': The observed follow-up time for each individual in the study data after censoring and
+                    based on the user-input parameter value for 'predicted_risk_interval'.
+                    - 'risk_estimates': The estimated absolute risks for each individual in the study data based on the
+                    model specified by the user-input parameters. This column is only present when the
+                    'predicted_risk_variable_name' parameter is set to None.
+                    - 'linear_predictors': The estimated linear predictors for each individual in the study data based
+                    on the model specified by the user-input parameters. This column is only present when the
+                    'linear_predictor_variable_name' parameter is set to None.
+                    - 'linear_predictors_category': The category of the linear predictor for each individual in the
+                    study data based on the user-input parameter value for 'linear_predictor_cutoffs', if provided,
+                    else based on 'number_of_percentiles'.
+            3) 'reference':
                 A dictionary with two further keys: 'absolute_risk' and 'risk_score' containing the predicted
                 absolute risks and linear predictors for the reference population, respectively. This key is only
                 present when either both 'reference_entry_age' and 'reference_exit_age' are provided to be calculated
                 by iCARE, or pre-calculated 'reference_predicted_risks' and 'reference_linear_predictors' are both
                 directly provided by the user.
-            3) 'incidence_rates':
+            4) 'incidence_rates':
                 The estimated age-specific incidence rates in the study and population as a data frame converted into
                 the records-oriented JSON format. The columns of the data frame are "age" and "study_rate". When iCARE
                 parameters are included (containing the disease incidence rates), "population_rate" is also included as
@@ -525,15 +545,15 @@ def validate_absolute_risk_model(
                     import pandas as pd
                     results = validate_absolute_risk_model(...)
                     incidence_rates = pd.read_json(results['incidence_rates'])
-            4) 'auc':
+            5) 'auc':
                 A dictionary containing the area under the receiver operating characteristic curve (AUC), the variance,
                 and the 95% confidence interval for the AUC. The dictionary has the following keys: 'auc', 'variance',
                 'lower_ci', and 'upper_ci'.
-            5) 'expected_by_observed_ratio':
+            6) 'expected_by_observed_ratio':
                 A dictionary containing the ratio of the expected and the observed number of cases in the study
                 population, and the 95% confidence interval for the ratio. The dictionary has the following keys:
                 'ratio', 'lower_ci', and 'upper_ci'.
-            6) 'calibration':
+            7) 'calibration':
                 A dictionary containing the calibration results. The dictionary has the following keys: 'absolute_risk',
                 and 'relative_risk' containing the calibration results for absolute risk and relative risk,
                 respectively. Each of these keys is a dictionary with the following information (associated key name):
@@ -541,7 +561,7 @@ def validate_absolute_risk_model(
                 test-statistic ('statistic'; with a sub-key containing 'chi_square' for the chi-squared metric),
                 and parameters of the statistical test ('parameter'; with a sub-key 'degrees_of_freedom' for the
                 degrees of freedom of the chi-squared distribution).
-            7) 'category_specific_calibration':
+            8) 'category_specific_calibration':
                 A records-oriented JSON containing the category-specific calibration results. The columns of the data
                 frame are: 'category', 'observed_absolute_risk', 'predicted_absolute_risk', 'lower_ci_absolute_risk',
                 'upper_ci_absolute_risk', 'observed_relative_risk', 'predicted_relative_risk', 'lower_ci_relative_risk',
@@ -550,11 +570,7 @@ def validate_absolute_risk_model(
                     import pandas as pd
                     results = validate_absolute_risk_model(...)
                     category_specific_calibration = pd.read_json((results['category_specific_calibration'])
-            8) 'dataset_name':
-                A string containing the name of the validation dataset.
-            9) 'model_name':
-                A string containing the name of the absolute risk model being validated.
-            10) 'method':
+            9) 'method':
                 A string containing the name of the iCARE method being used. When this method is used, the method name
                 is "iCARE - absolute risk model validation".
     """
