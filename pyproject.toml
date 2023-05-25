@@ -1,0 +1,45 @@
+[build-system]
+requires      = ["setuptools>=67.8.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyicare"
+version = "1.0.0"
+description = "A Python distribution of iCARE, a tool for individualized Coherent Absolute Risk Estimation."
+readme = "README.md"
+authors = [{ name = "Jeya Balaji Balasubramanian", email = "jeyabbalas@gmail.com" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Environment :: WebAssembly",
+    "Topic :: Scientific/Engineering",
+]
+keywords = [
+    "gwas",
+    "webassembly",
+    "survival-analysis",
+    "cox-proportional-hazard",
+    "genome-wide-association-studies",
+    "absolute-risk"
+]
+dependencies = [
+    "numpy>=1.24.2",
+    "pandas>=1.5.3",
+    "patsy>=0.5.3",
+    "scipy>=1.9.3",
+]
+requires-python = ">=3.9"
+
+[project.optional-dependencies]
+demo = ["matplotlib", "requests", "seaborn", "statsmodels"]
+dev = ["pytest"]
+
+[project.urls]
+Homepage = "https://github.com/jeyabbalas/py-icare"
+
+[project.scripts]
+compute_absolute_risk = "icare.absolute_risk_main:compute_absolute_risk"
+compute_absolute_risk_split_interval = "icare.absolute_risk_main:compute_absolute_risk_split_interval"
+validate_absolute_risk_model = "icare.absolute_risk_main:validate_absolute_risk_model"

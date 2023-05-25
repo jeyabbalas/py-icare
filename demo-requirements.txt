@@ -1,0 +1,4 @@
+matplotlib>=3.7.1
+requests>=2.31.0
+seaborn>=0.12.2
+statsmodels>=0.14.0
