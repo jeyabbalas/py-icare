@@ -13,13 +13,13 @@ This repository contains a Python package. It can be installed via PyPI as shown
 
 ### Python
 
-If you want to access iCARE from a purely Python runtime environment, you can install it via PyPI:
+If you want to access iCARE from a Python runtime environment, you can install it via [PyPI](https://pypi.org/project/pyicare/):
 
 ```bash
 pip install pyicare
 ```
 
-iCARE is supported on Python 3.7 and above.
+iCARE is supported on Python 3.9 and above.
 
 ### JavaScript
 ES6 import JS SDK via GitHub Pages.
@@ -29,15 +29,23 @@ ES6 import JS SDK via Quarto.
 
 ## Usage
 
+### Python
 Once installed, Py-iCARE can be imported into your Python scripts as follows:
 
 ```python
 import icare
 ```
 
-Py-iCARE is a library with three main functions: 1) `compute_absolute_risk()`, a method to build and apply absolute risk models; 2) `compute_absolute_risk_split_interval()`, a method to build and apply absolute risk models that relaxes the proportional hazard assumption to some extent by allowing you to specify different model parameters before and after a cut-point in time; and 3) `validate_absolute_risk_model()`, a method to validate absolute risk models on an independent cohort study data or a case-control study nested within a cohort.
+Py-iCARE is a library with three main methods:
 
-Example usages of these functions are shown in Jupyter notebooks at the [examples/Python](https://github.com/jeyabbalas/py-icare/tree/master/examples/Python) directory.
+1. `compute_absolute_risk()`: a method to build and apply absolute risk models. Based on the type of risk factors present in the model and what information is available, there can be three broad variations in using this method:
+   1. **Special SNP-only absolute risk model**: this variation shows you how to specify a SNP-based absolute risk model without the need to provide a reference dataset to represent the risk factor distribution of the underlying population. [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jeyabbalas/py-icare/blob/master/examples/Python/Special%20SNP-only%20absolute%20risk%20model.ipynb) 
+   2. **Covariate-only absolute risk model**: this option shows you how to specify a risk model with any type of covariates (including classical questionnaire-based risk factors and/or SNPs) so long as a reference dataset is available to represent the distribution of all the covariates in the underlying population. [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jeyabbalas/py-icare/blob/master/examples/Python/Covariate-only%20absolute%20risk%20model.ipynb)
+   3. **Combined SNP and covariate absolute risk model**: this option shows you how to specify a risk model that contains both SNPs and other type of covariates, such that, you have the reference dataset to represent the distribution of the covariates in the underlying population but you do not have the reference dataset to represent the SNP distribution. [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jeyabbalas/py-icare/blob/master/examples/Python/Combined%20SNP%20and%20covariate%20absolute%20risk%20model.ipynb)
+2. `compute_absolute_risk_split_interval()`: a method to build and apply absolute risk models that relaxes the proportional hazard assumption, to some extent, by allowing you to specify different model parameters before and after a cut-point in time.
+3. `validate_absolute_risk_model()`: a method to validate absolute risk models on an independent cohort study data or a case-control study nested within a cohort.
+
+The Jupyter notebooks for all the use-cases described above is available at the [examples/Python](https://github.com/jeyabbalas/py-icare/tree/master/examples/Python) directory of this repository.
 
 ### R
 Quarto
