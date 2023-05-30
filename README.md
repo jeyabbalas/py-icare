@@ -36,7 +36,7 @@ Py-iCARE is a library with three main methods:
 2. `compute_absolute_risk_split_interval()`: a method to build and apply absolute risk models that relaxes the proportional hazard assumption, to some extent, by allowing you to specify different model parameters that vary before and after a cut-point in time. [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jeyabbalas/py-icare/blob/master/examples/Python/Absolute%20risk%20over%20split%20intervals.ipynb)
 3. `validate_absolute_risk_model()`: a method to validate absolute risk models on an independent cohort study data or a case-control study nested within a cohort. [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jeyabbalas/py-icare/blob/master/examples/Python/Model%20validation.ipynb)
 
-The Jupyter notebooks for all the use-cases described above is available at the [examples/Python](https://github.com/jeyabbalas/py-icare/tree/master/examples/Python) directory of this repository.
+The Jupyter notebooks for all the use-cases described above is available at the [examples](https://github.com/jeyabbalas/py-icare/tree/master/examples) directory of this repository.
 
 ## License
 Py-iCARE is open-source licensed under the MIT License.
