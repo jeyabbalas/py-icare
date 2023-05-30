@@ -11,8 +11,6 @@ The main motivation of porting iCARE from R to Python was to enable its use as a
 
 This repository contains a Python package. It can be installed via PyPI as shown below. It is also compiled into WebAssembly via Pyodide. The wrapper JavaScript library, as ES6 modules, is also distributed in this repository at GitHub Pages. It can be accessed by any JavaScript runtime environment, including Node.js, web browsers, and Quarto notebooks in RStudio (to interface with R, Julia, and/or Python). Specifically, the steps to access it via JavaScript and R are also shown below.
 
-### Python
-
 If you want to access iCARE from a Python runtime environment, you can install it via [PyPI](https://pypi.org/project/pyicare/):
 
 ```bash
@@ -21,15 +19,8 @@ pip install pyicare
 
 iCARE is supported on Python 3.9 and above.
 
-### JavaScript
-ES6 import JS SDK via GitHub Pages.
-
-### R
-ES6 import JS SDK via Quarto.
-
 ## Usage
 
-### Python
 Once installed, Py-iCARE can be imported into your Python scripts as follows:
 
 ```python
@@ -46,12 +37,6 @@ Py-iCARE is a library with three main methods:
 3. `validate_absolute_risk_model()`: a method to validate absolute risk models on an independent cohort study data or a case-control study nested within a cohort. [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jeyabbalas/py-icare/blob/master/examples/Python/Model%20validation.ipynb)
 
 The Jupyter notebooks for all the use-cases described above is available at the [examples/Python](https://github.com/jeyabbalas/py-icare/tree/master/examples/Python) directory of this repository.
-
-### R
-Quarto
-
-### JavaScript
-ES6 import into script
 
 ## License
 Py-iCARE is open-source licensed under the MIT License.
