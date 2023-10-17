@@ -1,5 +1,5 @@
 # Py-iCARE
-<p style="text-align:center;">
+<p align="center">
 <img src="./images/pyicare-logo.png" style="width: 40%;">
 </p>
 
