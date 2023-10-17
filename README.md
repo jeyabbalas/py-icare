@@ -1,6 +1,6 @@
 # Py-iCARE
 <p align="center">
-<img src="./images/pyicare-logo.png" style="width: 30%;">
+<img src="./images/pyicare-logo.png" style="width: 40%;">
 </p>
 
 **Py-iCARE** is a Python distribution of iCARE, a tool for **i**ndividualized **C**oherent **A**bsolute **R**isk **E**stimation. iCARE allows users to build, validate, and apply absolute risk models. [Absolute risk](https://www.cancer.gov/publications/dictionaries/cancer-terms/def/absolute-risk) quantifies the chance of an event occurring. For example, the likelihood that a healthy individual, of a given age and a risk factor profile, will develop the disease of interest over a specified time interval.
