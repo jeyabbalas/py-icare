@@ -41,8 +41,12 @@ Py-iCARE is a library with three main methods:
 
 The Jupyter notebooks for all the use-cases described above is available at the [demo](https://github.com/jeyabbalas/py-icare/tree/master/demo) directory of this repository.
 
+## iCARE for the web
+Wasm-iCARE is a distribution of Py-iCARE for web applications(applications running on web browser, Node.js, RStudio's Quarto, etc.). Applications where portability and privacy is critical can make use of Wasm-iCARE. Wasm-iCARE is available at: https://github.com/jeyabbalas/wasm-icare.
+
 ## License
 Py-iCARE is open-source licensed under the MIT License.
 
 ## References
-1. [Pal Choudhury, Parichoy, Paige Maas, Amber Wilcox, William Wheeler, Mark Brook, David Check, Montserrat Garcia-Closas, and Nilanjan Chatterjee. "iCARE: an R package to build, validate and apply absolute risk models." PloS one 15, no. 2 (2020): e0228198.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7001949/)
+1. [Balasubramanian, Jeya Balaji, et al. "Wasm-iCARE: a portable and privacy-preserving web module to build, validate, and apply absolute risk models." arXiv preprint arXiv:2310.09252 (2023).](https://arxiv.org/abs/2310.09252)
+2. [Pal Choudhury, Parichoy, Paige Maas, Amber Wilcox, William Wheeler, Mark Brook, David Check, Montserrat Garcia-Closas, and Nilanjan Chatterjee. "iCARE: an R package to build, validate and apply absolute risk models." PloS one 15, no. 2 (2020): e0228198.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7001949/)
