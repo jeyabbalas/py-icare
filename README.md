@@ -48,5 +48,5 @@ Wasm-iCARE is a distribution of Py-iCARE for web applications(applications runni
 Py-iCARE is open-source licensed under the MIT License.
 
 ## References
-1. [Balasubramanian, Jeya Balaji, et al. "Wasm-iCARE: a portable and privacy-preserving web module to build, validate, and apply absolute risk models." arXiv preprint arXiv:2310.09252 (2023).](https://arxiv.org/abs/2310.09252)
-2. [Pal Choudhury, Parichoy, Paige Maas, Amber Wilcox, William Wheeler, Mark Brook, David Check, Montserrat Garcia-Closas, and Nilanjan Chatterjee. "iCARE: an R package to build, validate and apply absolute risk models." PloS one 15, no. 2 (2020): e0228198.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7001949/)
+1. [Balasubramanian JB, Choudhury PP, Mukhopadhyay S, Ahearn T, Chatterjee N, García-Closas M, Almeida JS. Wasm-iCARE: a portable and privacy-preserving web module to build, validate, and apply absolute risk models. JAMIA open. 2024 Apr 8;7(2).](https://pubmed.ncbi.nlm.nih.gov/38938691/)
+2. [Pal Choudhury P, Maas P, Wilcox A, Wheeler W, Brook M, Check D, Garcia-Closas M, Chatterjee N. iCARE: an R package to build, validate and apply absolute risk models. PloS one. 2020 Feb 5;15(2):e0228198.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7001949/)
