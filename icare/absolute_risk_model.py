@@ -61,7 +61,8 @@ def estimate_baseline_hazards(marginal_disease_incidence_rates: pd.Series, beta:
     """
     Baseline hazard: age-specific disease incidence rates when all covariates take their baseline values.
     """
-    expected_risk_score_current = np.repeat(np.average(np.exp(z @ beta), weights=w),
+    risk_score = np.exp(z.values @ beta)
+    expected_risk_score_current = np.repeat(np.average(risk_score, weights=w),
                                             len(marginal_disease_incidence_rates))
     expected_risk_score_previous = expected_risk_score_current - 1
     epsilon = 1e-3
@@ -73,13 +74,12 @@ def estimate_baseline_hazards(marginal_disease_incidence_rates: pd.Series, beta:
         baseline_hazards = marginal_disease_incidence_rates.values / expected_risk_score_previous
 
         # Update expected risk score using the new baseline hazard (under the proportional hazard model)
-        weight_matrix = np.repeat(w.reshape(-1, 1), len(baseline_hazards), axis=1)
-        hazard_scale = -np.exp(z.values @ beta)
+        hazard_scale = -risk_score
         cumsum_baseline_hazards = np.concatenate((np.array([0.]), np.cumsum(baseline_hazards)[:-1]))
-        numerator = np.exp(hazard_scale.reshape(-1, 1) @ cumsum_baseline_hazards.reshape(1, -1)) * weight_matrix
+        numerator = np.exp(hazard_scale.reshape(-1, 1) @ cumsum_baseline_hazards.reshape(1, -1)) * w[:, None]
         denominator = np.sum(numerator, axis=0)
         probability_z_given_t = numerator / denominator
-        expected_risk_score_current = np.sum(probability_z_given_t * np.exp(z.values @ beta).reshape(-1, 1), axis=0)
+        expected_risk_score_current = np.sum(probability_z_given_t * risk_score.reshape(-1, 1), axis=0)
 
     baseline_hazards = marginal_disease_incidence_rates.copy(deep=True) / expected_risk_score_current
 
@@ -87,14 +87,15 @@ def estimate_baseline_hazards(marginal_disease_incidence_rates: pd.Series, beta:
 
 
 def calculate_absolute_risk_inner_integral(age_range: np.ndarray, age_mask: np.ndarray, baseline_hazards: pd.Series,
-                                           competing_incidence_rates: pd.Series, betas: np.ndarray,
-                                           z: pd.DataFrame) -> np.ndarray:
+                                           competing_incidence_rates: pd.Series,
+                                           linear_predictor: np.ndarray) -> np.ndarray:
+    num_rows = len(linear_predictor)
     baseline_hazards_matrix = np.repeat(
-        baseline_hazards.loc[age_range].values.reshape(1, -1), len(z), axis=0) * age_mask
+        baseline_hazards.loc[age_range].values.reshape(1, -1), num_rows, axis=0) * age_mask
     competing_incidence_rates_matrix = np.repeat(
-        competing_incidence_rates.loc[age_range].values.reshape(1, -1), len(z), axis=0) * age_mask
+        competing_incidence_rates.loc[age_range].values.reshape(1, -1), num_rows, axis=0) * age_mask
 
-    inner_integral = baseline_hazards_matrix * np.exp(z @ betas).values.reshape(-1, 1) + \
+    inner_integral = baseline_hazards_matrix * np.exp(linear_predictor).reshape(-1, 1) + \
                      competing_incidence_rates_matrix
     inner_integral = np.cumsum(inner_integral, axis=1) * age_mask
     inner_integral = np.concatenate((np.zeros((inner_integral.shape[0], 1)), inner_integral[:, :-1]), axis=1)
@@ -111,13 +112,16 @@ def estimate_absolute_risks(age_interval_starts: np.ndarray, age_interval_ends: 
                 (age_range_matrix < age_interval_ends.reshape(-1, 1))).astype(float)
     log_baseline_hazards_age_range = np.log(baseline_hazards.loc[age_range].values)
 
+    # The linear predictor z @ betas feeds both the inner and outer integrals; compute it once.
+    linear_predictor = z.values @ betas
+
     # Calculate the inner integral
     inner_integral = calculate_absolute_risk_inner_integral(age_range, age_mask, baseline_hazards,
-                                                            competing_incidence_rates, betas, z)
+                                                            competing_incidence_rates, linear_predictor)
 
     # Calculate outer integral
     log_baseline_hazards_matrix = np.repeat(log_baseline_hazards_age_range.reshape(1, -1), len(z), axis=0)
-    linear_predictor_matrix = np.repeat((z @ betas).values.reshape(-1, 1), len(age_range), axis=1)
+    linear_predictor_matrix = np.repeat(linear_predictor.reshape(-1, 1), len(age_range), axis=1)
     absolute_risks = np.sum(
         (np.exp(log_baseline_hazards_matrix + linear_predictor_matrix - inner_integral) * age_mask), axis=1)
 
@@ -188,6 +192,13 @@ def model_free_impute_absolute_risk(age_interval_starts: np.ndarray, age_interva
     age_intervals = np.stack((age_interval_starts, age_interval_ends)).T
     unique_age_intervals = np.unique(age_intervals, axis=0)
 
+    # The population's observed-variable linear predictors and the resulting quantile cut-points
+    # depend only on which variables are observed (the missing-data pattern), not on the age
+    # interval or the specific profile. Memoize them by pattern so the O(M*P) population matmul and
+    # the O(M log M) quantile sort run once per distinct pattern instead of once per profile (in the
+    # common case all profiles share a single pattern, so this collapses to a single computation).
+    observed_cache = {}
+
     for (age_interval_start, age_interval_end) in unique_age_intervals:
         population_risks = estimate_absolute_risks(
             np.repeat(age_interval_start, len(population_distribution)),
@@ -216,11 +227,17 @@ def model_free_impute_absolute_risk(age_interval_starts: np.ndarray, age_interva
 
                 continue
 
-            population_linear_predictors_observed = population_distribution.iloc[:, variables_observed] @ betas_observed
-            profile_linear_predictors_observed = z[variables_observed] @ betas_observed
+            cache_key = tuple(variables_observed.tolist())
+            if cache_key not in observed_cache:
+                population_linear_predictors_observed = \
+                    population_distribution.iloc[:, variables_observed] @ betas_observed
+                observed_cache[cache_key] = (
+                    population_linear_predictors_observed,
+                    get_cutpoints(population_linear_predictors_observed, quantiles))
+            population_linear_predictors_observed, cutpoints_population_linear_predictors_observed = \
+                observed_cache[cache_key]
 
-            cutpoints_population_linear_predictors_observed = get_cutpoints(
-                population_linear_predictors_observed, quantiles)
+            profile_linear_predictors_observed = z[variables_observed] @ betas_observed
             cutpoint_lower_index, cutpoint_upper_index = assign_value_to_quantile(
                 profile_linear_predictors_observed, cutpoints_population_linear_predictors_observed)
             population_within_range = get_samples_within_range(
@@ -237,10 +254,10 @@ def model_free_impute_absolute_risk(age_interval_starts: np.ndarray, age_interva
                 population_within_range = get_samples_from_expanded_quantile_range(
                     population_linear_predictors_observed, cutpoint_lower_index, cutpoint_upper_index)
 
-            selected = [population_linear_predictors.index.get_loc(index) for index in population_within_range.index]
+            selected = population_linear_predictors.index.get_indexer(population_within_range.index)
             profile_risks[profile_index] = np.average(population_risks[selected], weights=population_weights[selected])
-            profile_linear_predictors[profile_index] = np.average(population_linear_predictors[selected],
-                                                                  weights=population_weights[selected])
+            profile_linear_predictors[profile_index] = np.average(
+                population_linear_predictors.values[selected], weights=population_weights[selected])
 
     return profile_risks, profile_linear_predictors
 
