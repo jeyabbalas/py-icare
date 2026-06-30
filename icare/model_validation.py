@@ -583,7 +583,7 @@ class ModelValidation:
         score_cases = self.study_data.loc[cases, self.linear_predictor_variable_name].values
         score_controls = self.study_data.loc[controls, self.linear_predictor_variable_name].values
         # indicate if case scores are higher than controls
-        indicator = np.array([x > score_controls for x in score_cases]).T
+        indicator = (score_cases[:, None] > score_controls[None, :]).T
 
         if self.nested_case_control_study:
             auc, auc_variance = self._calculate_inverse_probability_weighted_auc(indicator)
