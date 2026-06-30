@@ -206,7 +206,12 @@ out_val_cov <- ModelValidation(
   predicted.risk.interval = NULL, iCARE.model.object = risk_model_cov,
   number.of.percentiles = 10
 )
-write_golden(validation_metrics(out_val_cov), "bpc3_validation_covariate_only.json")
+# Recompute the AUC with the 0.5-tie convention (see weighted_auc_with_ties); the
+# study's nested case-control sampling weights drive the IPW estimator.
+write_golden(
+  apply_tie_aware_auc(validation_metrics(out_val_cov), out_val_cov, study$sampling.weights),
+  "bpc3_validation_covariate_only.json"
+)
 
 risk_model_comb <- risk_model_cov
 risk_model_comb$model.snp.info <- bc_72_snps
@@ -217,6 +222,9 @@ out_val_comb <- ModelValidation(
   predicted.risk.interval = NULL, iCARE.model.object = risk_model_comb,
   number.of.percentiles = 10
 )
-write_golden(validation_metrics(out_val_comb), "bpc3_validation_combined.json")
+write_golden(
+  apply_tie_aware_auc(validation_metrics(out_val_comb), out_val_comb, study$sampling.weights),
+  "bpc3_validation_combined.json"
+)
 
 cat("BPC3 golden references complete.\n")

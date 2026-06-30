@@ -205,7 +205,7 @@ def _build_validation_study(tmp_path):
 
 def _assert_validation_metrics(result, golden):
     # Expected/observed ratio and AUC are categorization-independent and agree
-    # numerically (AUC has a known ~5e-3 systematic offset, see ATOL_AUC).
+    # numerically (both engines now use 0.5-tie Mann-Whitney AUC credit, see ATOL_AUC).
     np.testing.assert_allclose(
         result["expected_by_observed_ratio"]["ratio"], golden["eo_ratio"], atol=ATOL_EO
     )
@@ -220,7 +220,7 @@ def _assert_validation_metrics(result, golden):
 
 @pytest.mark.slow
 def test_validation_covariate_only(tmp_path):
-    """Deterministic risks: E/O matches tightly; AUC within the documented gap."""
+    """Deterministic risks: E/O and AUC both match tightly (0.5-tie AUC credit)."""
     golden = load_golden("bpc3_validation_covariate_only.json")
     study_path = _build_validation_study(tmp_path)
     result = icare.validate_absolute_risk_model(
