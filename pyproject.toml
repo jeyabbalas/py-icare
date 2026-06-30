@@ -46,3 +46,10 @@ validate_absolute_risk_model = "icare.absolute_risk_main:validate_absolute_risk_
 
 [tool.setuptools]
 packages = ["icare"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "slow: cross-validation tests over the large (50k-row) validation cohorts; deselect with '-m \"not slow\"'",
+]
