@@ -753,7 +753,10 @@ class ModelValidation:
         predicted_probs_per_category = predicted_probs_weighted_per_category / weights_per_category
 
         # variance of observed outcome per category (using the variance of a binomial distribution)
-        observed_risk_category = self.study_data['linear_predictors_category'].replace(
+        # map each subject's risk-score category to its category-level predicted probability;
+        # cast away the Categorical dtype first since pandas >= 3.0 forbids materializing new
+        # (float) values into a Categorical column.
+        observed_risk_category = self.study_data['linear_predictors_category'].astype(object).map(
             dict(predicted_probs_per_category)).astype(float)
         variance_correction_ar = (self.study_data['observed_outcome'] - observed_risk_category) ** 2 * (
                     1 - self.study_data['sampling_weights']) / (self.study_data['sampling_weights'] ** 2)
