@@ -9,6 +9,12 @@ from icare import check_errors, utils
 from icare.absolute_risk_model import AbsoluteRiskModel, format_rates
 
 
+# Two risk scores closer than this are treated as tied in the AUC (0.5 credit).
+# Window: above floating-point jitter (~1e-13), below the smallest distinct
+# linear-predictor gap (~2.6e-8 on the shipped models).
+AUC_TIE_TOLERANCE = 1e-9
+
+
 class ModelValidationResults:
     info: dict = dict()
     reference: Optional[dict] = None
@@ -582,8 +588,14 @@ class ModelValidation:
 
         score_cases = self.study_data.loc[cases, self.linear_predictor_variable_name].values
         score_controls = self.study_data.loc[controls, self.linear_predictor_variable_name].values
-        # indicate if case scores are higher than controls
-        indicator = (score_cases[:, None] > score_controls[None, :]).T
+        # Mann-Whitney / trapezoidal AUC: a (control, case) pair scores 1.0 when the case's
+        # risk score exceeds the control's, 0.5 when they tie, 0.0 otherwise. Scores within
+        # AUC_TIE_TOLERANCE are treated as tied so floating-point jitter cannot split a true
+        # tie. Orientation stays (controls, cases) -- the .T -- to match the IPW weight matrix
+        # and the DeLong variance axes used downstream.
+        score_difference = (score_cases[:, None] - score_controls[None, :]).T
+        indicator = (score_difference > AUC_TIE_TOLERANCE).astype(float) \
+            + 0.5 * (np.abs(score_difference) <= AUC_TIE_TOLERANCE).astype(float)
 
         if self.nested_case_control_study:
             auc, auc_variance = self._calculate_inverse_probability_weighted_auc(indicator)
