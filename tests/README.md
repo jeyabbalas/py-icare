@@ -47,6 +47,11 @@ Rscript tests/r_reference/generate_icare_lit_references.R
 Reference R/iCARE versions used to produce the committed goldens: **R 4.5.2,
 iCARE 1.38.0**.
 
+The generators post-process the validation `auc` with `weighted_auc_with_ties`
+(a tie-aware Mann-Whitney AUC) applied to iCARE's own returned risk score, so the
+goldens use the same 0.5-tie convention as the fixed py-icare estimator. iCARE itself
+is left unpatched (see finding #2).
+
 ### How each model maps to R
 
 * **BPC3** is the *same* model as iCARE's built-in `bc_data` (re-encoded: R uses
@@ -72,7 +77,7 @@ because R and Python use different random number generators.
 | Reference-population risk distribution (summary q1/median/mean/q3) | `atol=5e-3` | order-independent, stable across RNGs |
 | SNP per-subject risks (simulation / imputation) | `atol=2e-2` | R and Python RNGs differ; cannot match per subject |
 | Validation expected/observed ratio | `atol=1e-2` | agrees (~1e-3 cov-only, ~5e-3 combined) |
-| Validation AUC | `atol=1.5e-2` | see finding below |
+| Validation AUC | `atol=1e-3` | 0.5-tie credit in both engines; see finding below |
 | Validation Hosmer-Lemeshow | conclusion only | see finding below |
 
 Min/max of distributions are excluded from comparisons as RNG-sensitive extreme
@@ -89,11 +94,22 @@ order statistics.
    The documented `pd.read_json(result[...])` examples in the docstrings were
    broken the same way and were corrected.
 
-2. **AUC estimator difference (~0.005).** With identical risks and identical
-   sampling weights, py-icare's IPW AUC is consistently ~0.005 higher than R's
-   (e.g. 0.6003 vs 0.5952). The expected/observed ratio matches to ~0.001, so the
-   risks themselves agree — the gap is in the AUC estimator. Tolerated via
-   `ATOL_AUC`; worth a closer look in a future pass.
+2. **AUC tie handling (fixed).** Both engines computed the AUC with a strict `>`
+   over the linear predictor, giving a tied case/control score 0 credit instead of
+   the statistically correct 0.5 (Mann-Whitney U / trapezoidal ROC). The estimators
+   are otherwise identical (same IPW `kronecker` weights, same normalization), so the
+   old ~0.005 gap (BPC3 covariate-only **0.6003 py vs 0.5952 R**) was *not* in the
+   estimator: py-icare's linear predictor is near-continuous (essentially tie-free,
+   5284 distinct levels among 5285 subjects), so its strict-`>` AUC already equalled
+   the tie-aware value, whereas R's BPC3 risk score is coarse (many tied scores) that
+   strict-`>` zeroed, dragging R's AUC down. The fix credits ties 0.5 in py-icare
+   (`AUC_TIE_TOLERANCE` in `icare/model_validation.py`) and regenerates the R goldens
+   with the same convention (`weighted_auc_with_ties` in `tests/r_reference/r_utils.R`,
+   applied to iCARE's own returned risk score — iCARE itself is left unpatched). The
+   BPC3 validation AUCs now converge (cov-only **0.6002 R vs ~0.6003 py**); the
+   full-cohort iCARE-Lit AUC was already tie-free and is unchanged. Tolerance tightened
+   to `ATOL_AUC = 1e-3`. Independent of R, `tests/test_auc_ties.py` pins the tie-aware
+   AUC against hand-computed values.
 
 3. **Hosmer-Lemeshow binning difference.** R and py-icare bin risk scores
    differently (especially the weighted quantiles), so the HL chi-square magnitude

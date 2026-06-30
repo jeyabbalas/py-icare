@@ -37,7 +37,11 @@ ATOL_DISTRIBUTION = 5e-3
 ATOL_STOCHASTIC = 2e-2
 # Validation metrics.
 ATOL_EO = 1e-2        # expected/observed ratio agrees (cov-only ~1e-3, combined ~5e-3)
-ATOL_AUC = 1.5e-2     # known ~5e-3 systematic R-vs-py difference in the IPW-AUC estimator
+# Both engines now credit tied risk scores 0.5 (Mann-Whitney / trapezoidal AUC); the R
+# goldens are regenerated with the same convention via weighted_auc_with_ties. The old
+# ~5e-3 gap was R's coarse risk score producing ties that strict-`>` zeroed; the residual
+# now (~1e-4) is just R's coarse score vs py's near-continuous linear predictor.
+ATOL_AUC = 1e-3
 # The Hosmer-Lemeshow chi-square magnitude differs by ~15% because R and py use
 # different weighted risk-score binning; we instead require the calibration
 # *conclusion* (significant miscalibration at this level) to agree.
