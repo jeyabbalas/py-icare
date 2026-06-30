@@ -134,6 +134,11 @@ out_val <- ModelValidation(
   study.data = study, total.followup.validation = TRUE, predicted.risk.interval = NULL,
   iCARE.model.object = risk_model, number.of.percentiles = 10
 )
-write_golden(validation_metrics(out_val), "icare_lit_validation.json")
+# Recompute the AUC with the 0.5-tie convention (see weighted_auc_with_ties); this is
+# a full cohort (no sampling weights), so the estimator is unweighted.
+write_golden(
+  apply_tie_aware_auc(validation_metrics(out_val), out_val, sampling.weights = NULL),
+  "icare_lit_validation.json"
+)
 
 cat("iCARE-Lit golden references complete.\n")

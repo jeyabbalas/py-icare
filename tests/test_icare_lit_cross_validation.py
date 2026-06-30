@@ -110,7 +110,7 @@ def test_validation():
     """Full-cohort (unweighted) validation with the ge50 model.
 
     Exercises the non-weighted validation path. Deterministic risks => E/O matches
-    tightly and AUC within the documented offset; HL conclusion must agree.
+    tightly and AUC matches tightly (0.5-tie AUC credit); HL conclusion must agree.
     """
     golden = load_golden("icare_lit_validation.json")
     result = icare.validate_absolute_risk_model(
