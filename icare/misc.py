@@ -1,3 +1,5 @@
+import io
+
 import pandas as pd
 
 from icare.absolute_risk_model import AbsoluteRiskModel
@@ -37,11 +39,11 @@ def combine_split_absolute_risk_results(results_before_cutpoint: dict, results_a
     results['model']['before_cutpoint'] = results_before_cutpoint['model']
     results['model']['after_cutpoint'] = results_after_cutpoint['model']
 
-    profile_before_cutpoint = pd.read_json(results_before_cutpoint['profile'], orient='records')
+    profile_before_cutpoint = pd.read_json(io.StringIO(results_before_cutpoint['profile']), orient='records')
     if 'id' in profile_before_cutpoint.columns:
         profile_before_cutpoint.set_index('id', inplace=True)
 
-    profile_after_cutpoint = pd.read_json(results_after_cutpoint['profile'], orient='records')
+    profile_after_cutpoint = pd.read_json(io.StringIO(results_after_cutpoint['profile']), orient='records')
     if 'id' in profile_after_cutpoint.columns:
         profile_after_cutpoint.set_index('id', inplace=True)
 
