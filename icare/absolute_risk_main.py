@@ -111,9 +111,10 @@ def compute_absolute_risk(
                 absolute risk estimates. If 'return_linear_predictors' is set to True, they are also included as an
                 additional column.
                 A Pandas DataFrame can be reconstructed using the following code:
+                    import io
                     import pandas as pd
                     results = compute_absolute_risk(...)
-                    pd.read_json(results["profile"], orient="records")
+                    pd.read_json(io.StringIO(results["profile"]), orient="records")
             3) 'reference_risks':
                 If 'return_reference_risks' is True, this key will be present in the returned dictionary. It will
                 contain a list of dictionaries, one per unique combination of the specified age intervals, containing
@@ -279,9 +280,10 @@ def compute_absolute_risk_split_interval(
                 calculated absolute risk estimates. If 'return_linear_predictors' is set to True, they are also included
                 as an additional column.
                 A Pandas DataFrame can be reconstructed using the following code:
+                    import io
                     import pandas as pd
                     results = compute_absolute_risk_split_interval(...)
-                    pd.read_json(results["profile"], orient="records")
+                    pd.read_json(io.StringIO(results["profile"]), orient="records")
             3) 'reference_risks':
                 If 'return_reference_risks' is True, this key will be present in the returned dictionary. It will
                 contain two list of dictionaries with keys before_cutpoint' and 'after_cutpoint', each of which contains
@@ -531,9 +533,10 @@ def validate_absolute_risk_model(
                     study data based on the user-input parameter value for 'linear_predictor_cutoffs', if provided,
                     else based on 'number_of_percentiles'.
                 A Pandas data frame can be reconstructed using the following code snippet:
+                    import io
                     import pandas as pd
                     results = validate_absolute_risk_model(...)
-                    study_data = pd.read_json(results['study_data'])
+                    study_data = pd.read_json(io.StringIO(results['study_data']))
                     study_data = study_data.set_index('id')
             3) 'reference':
                 A dictionary with two further keys: 'absolute_risk' and 'risk_score' containing the predicted
@@ -547,9 +550,10 @@ def validate_absolute_risk_model(
                 parameters are included (containing the disease incidence rates), "population_rate" is also included as
                 a column.
                 A Pandas data frame can be reconstructed using the following code snippet:
+                    import io
                     import pandas as pd
                     results = validate_absolute_risk_model(...)
-                    incidence_rates = pd.read_json(results['incidence_rates'])
+                    incidence_rates = pd.read_json(io.StringIO(results['incidence_rates']))
                     incidence_rates = incidence_rates.set_index('age')
             5) 'auc':
                 A dictionary containing the area under the receiver operating characteristic curve (AUC), the variance,
@@ -573,9 +577,10 @@ def validate_absolute_risk_model(
                 'upper_ci_absolute_risk', 'observed_relative_risk', 'predicted_relative_risk', 'lower_ci_relative_risk',
                 'upper_ci_relative_risk'. The rows of the data frame are the categories of the risk score.
                 A Pandas data frame can be reconstructed using the following code snippet:
+                    import io
                     import pandas as pd
                     results = validate_absolute_risk_model(...)
-                    category_specific_calibration = pd.read_json((results['category_specific_calibration'])
+                    category_specific_calibration = pd.read_json(io.StringIO(results['category_specific_calibration']))
             9) 'method':
                 A string containing the name of the iCARE method being used. When this method is used, the method name
                 is "iCARE - absolute risk model validation".
