@@ -6,8 +6,9 @@ iCARE-Lit validation cohorts have an essentially tie-free linear predictor, so t
 proves the Mann-Whitney / trapezoidal tie credit (1.0 / 0.5 / 0.0) actually works.
 
 We drive ``_calculate_auc`` directly via ``ModelValidation.__new__`` so we can build
-tiny tie-heavy frames: going through ``ModelValidation.__init__`` would also run the
-downstream ``pd.qcut`` percentile binning, which raises on such small inputs.
+tiny tie-heavy frames without supplying full model inputs. (The percentile binning no
+longer raises on tied/small inputs -- see ``tests/test_hl_binning.py`` -- but the
+``__new__`` shortcut still keeps these AUC unit tests free of model files.)
 """
 import numpy as np
 import pandas as pd

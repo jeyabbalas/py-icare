@@ -224,82 +224,36 @@ def weighted_quantile(x, probs, weights=None, type='quantile', normalize_weights
         return pd.Series(np.interp(probs, w['ecdf'], w['x'], right=np.nan), index=nams)
 
 
-def reposition(cut, x):
-    x_ge_cut = x >= cut
-    if np.sum(x_ge_cut) == 0:
-        return cut
-    else:
-        return np.min(x[x_ge_cut])
-
-
 def weighted_quantcut(x: pd.Series, weights: Union[pd.Series, np.array, None] = None, q: Union[int, List[float]] = 10,
                       remove_missing: bool = True) -> pd.Series:
+    """Bin ``x`` into ``q`` (weighted) quantile groups, returned as an ordered Categorical.
+
+    Like R's ``quantcut`` / ``weighted.quantcut``, a coarse/tied ``x`` whose quantile cut-offs
+    collide degrades gracefully instead of raising: duplicate edges are dropped (yielding fewer
+    than ``q`` bins) and any now-empty bins are removed so the per-category observed/expected
+    arrays stay aligned. ``weights=None`` uses unweighted type-7 quantiles (the same edges as
+    ``pd.qcut``); otherwise inverse-probability-weighted ``i/n`` quantiles are used. Cut-offs
+    span ``[min(x), max(x)]``, so every observation is assigned a bin.
+    """
     if isinstance(q, int):
         q = np.linspace(0, 1, num=q+1)
 
-    cutoffs = weighted_quantile(x.values, weights=weights.values, probs=q, type='i/n', remove_missing=remove_missing)
+    weights_values = weights.values if weights is not None else None
+    cutoffs = weighted_quantile(x.values, weights=weights_values, probs=q, type='i/n', remove_missing=remove_missing)
 
-    duplicates = cutoffs.duplicated()
-    if any(duplicates):
-        """
-        Duplicate quantile cut-offs implies that 'x' has a large repetition of values. In this case, we need to 
-        reposition the cut-offs to avoid empty intervals. The method here prevents bin intervals like these forming:
-        [(a, b], (b, b], (b, b], (b, c]]. Instead it creates: [(a, b), {b}, (b, c]]. Here, 'b' is the duplicate
-        quantile bin. It gets its own designated interval, and the interval boundaries of the intervals around it are 
-        adjusted accordingly. 
-        """
-        # create designated intervals for duplicate quantile bins
-        x_quantiles = pd.Series(
-            x.map(lambda x_val: f"{{{x_val}}}" if x_val in cutoffs[duplicates].unique() else np.nan),
-            dtype='object')
-        new_cutoffs = cutoffs.groupby(cutoffs).apply(lambda cut: reposition(cut.name, x))
-        equals_duplicate_cutoff = x.isin(cutoffs[duplicates].unique())
-        x_quantiles[~equals_duplicate_cutoff] = pd.cut(
-            x[~equals_duplicate_cutoff], bins=new_cutoffs, include_lowest=True)
-
-        # adjust the boundaries of the intervals around the duplicate quantile bins
-        intervals = x_quantiles[np.argsort(x)].dropna().unique()
-        x_new_quantiles = pd.Categorical(x_quantiles, intervals, ordered=True)
-
-        bounds = [interval
-                  if isinstance(interval, pd.Interval)
-                  else pd.Interval(float(interval[1:-1]), float(interval[1:-1]), closed='both')
-                  for interval in intervals]
-
-        for i in range(len(bounds)):
-            if i > 0:
-                if bounds[i].left == bounds[i - 1].left and bounds[i].left == bounds[i - 1].right:
-                    closed = bounds[i].closed
-                    if closed == 'left':
-                        closed = 'neither'
-                    elif closed == 'both':
-                        closed = 'right'
-                    bounds[i] = pd.Interval(bounds[i].left, bounds[i].right, closed=closed)
-            if i < len(bounds) - 1:
-                if bounds[i].right == bounds[i + 1].left and bounds[i].right == bounds[i + 1].right:
-                    closed = bounds[i].closed
-                    if closed == 'right':
-                        closed = 'neither'
-                    elif closed == 'both':
-                        closed = 'left'
-                    bounds[i] = pd.Interval(bounds[i].left, bounds[i].right, closed=closed)
-
-        x_new_quantiles = x_new_quantiles.rename_categories([str(bound) for bound in bounds])
-        x_quantiles = pd.Series(x_new_quantiles, index=x.index)
-    else:
-        x_quantiles = pd.cut(x, bins=cutoffs, include_lowest=True)
-
-    return x_quantiles
+    return pd.cut(x, bins=cutoffs.values, include_lowest=True, duplicates='drop').cat.remove_unused_categories()
 
 
 def calculate_rr_stddev_chi2_and_variance(
-        variance_ar_per_category: np.ndarray, number_percentiles: int, mean_observed_prob, observed_probs_per_category,
+        variance_ar_per_category: np.ndarray, mean_observed_prob, observed_probs_per_category,
         observed_rr_per_category, predicted_rr_per_category) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     # variance-covariance matrix of the absolute risks
     variance_matrix_ar = np.diag(variance_ar_per_category)
 
-    # derivative matrix for log relative risks
-    derivative_off_diagonal = -1 / (number_percentiles * mean_observed_prob)
+    # derivative matrix for log relative risks; the off-diagonal uses the realized number of
+    # categories (tied scores can merge quantile bins to fewer than number_of_percentiles)
+    number_categories = len(observed_probs_per_category)
+    derivative_off_diagonal = -1 / (number_categories * mean_observed_prob)
     derivative_diagonal = np.diag(1 / observed_probs_per_category + derivative_off_diagonal)
     derivative_diagonal[np.tril_indices(derivative_diagonal.shape[0], -1)] = derivative_off_diagonal
     derivative_diagonal[np.triu_indices(derivative_diagonal.shape[0], 1)] = derivative_off_diagonal
@@ -365,7 +319,7 @@ class ModelValidation:
         self._calculate_auc()
         self._calculate_expected_by_observed_ratio()
         self._categorize_risk_scores(linear_predictor_cutoffs, number_of_percentiles)
-        self._calculate_calibration(number_of_percentiles)
+        self._calculate_calibration()
 
     def _set_study_data(self, study_data_path: Union[str, pathlib.Path], predicted_risk_variable_name: Optional[str],
                         linear_predictor_variable_name: Optional[str]) -> None:
@@ -652,24 +606,24 @@ class ModelValidation:
             self.study_data['linear_predictors_category'] = pd.cut(self.study_data['linear_predictors'],
                                                                    bins=cutoffs, include_lowest=True)
         else:
-            if self.nested_case_control_study:
-                self.study_data['linear_predictors_category'] = weighted_quantcut(
-                    self.study_data['linear_predictors'], self.study_data['frequency'], number_of_percentiles)
-            else:
-                self.study_data['linear_predictors_category'] = pd.qcut(
-                    self.study_data['linear_predictors'], q=number_of_percentiles)
+            # Both paths use weighted_quantcut, which degrades gracefully on a coarse/tied linear
+            # predictor (collapsing duplicate quantile edges into fewer bins, like R's quantcut)
+            # instead of raising. weights=None falls back to type-7 quantiles == pd.qcut edges.
+            weights = self.study_data['frequency'] if self.nested_case_control_study else None
+            self.study_data['linear_predictors_category'] = weighted_quantcut(
+                self.study_data['linear_predictors'], weights, number_of_percentiles)
 
-    def _calculate_calibration(self, number_of_percentiles):
+    def _calculate_calibration(self):
         self.results.init_calibration(
             self.study_data['linear_predictors_category'].value_counts().sort_index().index.astype(str)
         )
 
         if self.nested_case_control_study:
-            self._calculate_risk_weighted_calibration(number_of_percentiles)
+            self._calculate_risk_weighted_calibration()
         else:
-            self._calculate_risk_calibration(number_of_percentiles)
+            self._calculate_risk_calibration()
 
-    def _calculate_risk_calibration(self, number_of_percentiles):
+    def _calculate_risk_calibration(self):
         samples_per_category = self.study_data['linear_predictors_category'].value_counts().sort_index().values
 
         # absolute risk (ar) calibration
@@ -687,9 +641,10 @@ class ModelValidation:
         stddev_ar_per_category = np.sqrt(variance_ar_per_category)
 
         # Hosmer–Lemeshow goodness of fit (GOF) test
+        number_categories = len(observed_probs_per_category)  # tied scores can merge bins below number_of_percentiles
         chi2_ar = np.sum(
             ((observed_probs_per_category - predicted_probs_per_category) ** 2) / variance_ar_per_category)
-        df_ar = number_of_percentiles
+        df_ar = number_categories
         p_value_ar = 1 - chi2.cdf(chi2_ar, df_ar)
 
         # calculate the 95% confidence intervals
@@ -714,9 +669,9 @@ class ModelValidation:
         # chi-squared test statistic
         stddev_log_rr_per_category, chi2_log_rr, variance_matrix_ar, var_cov_log_rr_per_category = \
             calculate_rr_stddev_chi2_and_variance(
-                variance_ar_per_category, number_of_percentiles, mean_observed_prob, observed_probs_per_category,
+                variance_ar_per_category, mean_observed_prob, observed_probs_per_category,
                 observed_rr_per_category, predicted_rr_per_category)
-        df_rr = number_of_percentiles - 1
+        df_rr = number_categories - 1
         p_value_rr = 1 - chi2.cdf(chi2_log_rr, df_rr)
 
         # calculate the 95% confidence intervals
@@ -747,7 +702,7 @@ class ModelValidation:
             var_cov_log_rr_per_category
         )
 
-    def _calculate_risk_weighted_calibration(self, number_of_percentiles):
+    def _calculate_risk_weighted_calibration(self):
         weights_per_category = self.study_data['frequency'].groupby(
             self.study_data['linear_predictors_category']).sum()
 
@@ -781,9 +736,10 @@ class ModelValidation:
         stddev_ar_per_category = np.sqrt(variance_ar_per_category)
 
         # Hosmer–Lemeshow goodness of fit (GOF) test
+        number_categories = len(observed_probs_per_category)  # tied scores can merge bins below number_of_percentiles
         chi2_ar = np.sum(
             ((observed_probs_per_category - predicted_probs_per_category) ** 2) / variance_ar_per_category)
-        df_ar = number_of_percentiles
+        df_ar = number_categories
         p_value_ar = 1 - chi2.cdf(chi2_ar, df_ar)
 
         # calculate the 95% confidence intervals
@@ -804,9 +760,9 @@ class ModelValidation:
         # chi-squared test statistic
         stddev_log_rr_per_category, chi2_log_rr, variance_matrix_ar, var_cov_log_rr_per_category = \
             calculate_rr_stddev_chi2_and_variance(
-                variance_ar_per_category, number_of_percentiles, mean_observed_prob, observed_probs_per_category,
+                variance_ar_per_category, mean_observed_prob, observed_probs_per_category,
                 observed_rr_per_category, predicted_rr_per_category)
-        df_rr = number_of_percentiles - 1
+        df_rr = number_categories - 1
         p_value_rr = 1 - chi2.cdf(chi2_log_rr, df_rr)
 
         # calculate the 95% confidence intervals
