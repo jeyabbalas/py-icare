@@ -575,7 +575,11 @@ def validate_absolute_risk_model(
                 A records-oriented JSON containing the category-specific calibration results. The columns of the data
                 frame are: 'category', 'observed_absolute_risk', 'predicted_absolute_risk', 'lower_ci_absolute_risk',
                 'upper_ci_absolute_risk', 'observed_relative_risk', 'predicted_relative_risk', 'lower_ci_relative_risk',
-                'upper_ci_relative_risk'. The rows of the data frame are the categories of the risk score.
+                'upper_ci_relative_risk', 'expected_by_observed_ratio', 'lower_ci_expected_by_observed_ratio',
+                'upper_ci_expected_by_observed_ratio'. The 'expected_by_observed_ratio' is the ratio of the predicted
+                (expected) to the observed absolute risk within the category, along with its 95% confidence interval;
+                for a category with no observed events the ratio is undefined and is reported as null. The rows of the
+                data frame are the categories of the risk score.
                 A Pandas data frame can be reconstructed using the following code snippet:
                     import io
                     import pandas as pd

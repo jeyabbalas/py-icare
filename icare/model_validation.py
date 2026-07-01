@@ -85,6 +85,12 @@ class ModelValidationResults:
         self.category_specific_calibration['lower_ci_' + risk_name] = lower_cis
         self.category_specific_calibration['upper_ci_' + risk_name] = upper_cis
 
+    def append_expected_by_observed_ratio_to_category_specific_calibration(
+            self, ratios: List[float], lower_cis: List[float], upper_cis: List[float]) -> None:
+        self.category_specific_calibration['expected_by_observed_ratio'] = ratios
+        self.category_specific_calibration['lower_ci_expected_by_observed_ratio'] = lower_cis
+        self.category_specific_calibration['upper_ci_expected_by_observed_ratio'] = upper_cis
+
     def append_calibration_statistical_test_results(
             self, score_name: str, method: str, test_statistic_name: str, test_statistic: float, p_value: float,
             df: int, variance: np.ndarray) -> None:
@@ -274,6 +280,43 @@ def calculate_rr_stddev_chi2_and_variance(
     chi2_log_rr = diff_log_rr @ sigma_inv_log_rr @ diff_log_rr
 
     return stddev_log_rr_per_category, chi2_log_rr, variance_matrix_ar, var_cov_log_rr_per_category
+
+
+def calculate_expected_by_observed_ratio_per_category(
+        observed_probs_per_category, predicted_probs_per_category,
+        variance_ar_per_category) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Bin-specific expected-by-observed (E/O) ratio and its 95% confidence interval.
+
+    This is the per-category analog of the overall E/O ratio computed in
+    ``ModelValidation._calculate_expected_by_observed_ratio``: the ratio is the (weighted) mean
+    predicted absolute risk over the (weighted) observed event rate in the bin, and the CI is a
+    log-Wald interval that treats the expected (predicted) risk as fixed, so
+    ``Var(log(E/O)) = Var(observed) / observed ** 2``. ``variance_ar_per_category`` is the same
+    weight-aware per-bin variance of the observed rate already used for the absolute-risk
+    calibration CI, so the E/O CI is consistent with it and with the Hosmer-Lemeshow test.
+
+    Bins with no observed events (observed rate == 0) -- or, defensively, no predicted risk --
+    make the ratio undefined/infinite; these are returned as NaN (serialized to JSON null)
+    rather than raising.
+    """
+    observed = np.asarray(observed_probs_per_category, dtype=float)
+    predicted = np.asarray(predicted_probs_per_category, dtype=float)
+    variance = np.asarray(variance_ar_per_category, dtype=float)
+
+    # bins where the ratio (or its log) is undefined
+    degenerate = (observed <= 0) | (predicted <= 0)
+
+    with np.errstate(divide='ignore', invalid='ignore'):
+        ratio = predicted / observed
+        log_ratio_variance = variance / observed ** 2
+        lower_ci, upper_ci = np.exp(
+            wald_confidence_interval(np.log(ratio), np.sqrt(log_ratio_variance)))
+
+    ratio = np.where(degenerate, np.nan, ratio)
+    lower_ci = np.where(degenerate, np.nan, lower_ci)
+    upper_ci = np.where(degenerate, np.nan, upper_ci)
+
+    return ratio, lower_ci, upper_ci
 
 
 class ModelValidation:
@@ -702,6 +745,11 @@ class ModelValidation:
             var_cov_log_rr_per_category
         )
 
+        eo_ratio, eo_lower_ci, eo_upper_ci = calculate_expected_by_observed_ratio_per_category(
+            observed_probs_per_category, predicted_probs_per_category, variance_ar_per_category)
+        self.results.append_expected_by_observed_ratio_to_category_specific_calibration(
+            eo_ratio.tolist(), eo_lower_ci.tolist(), eo_upper_ci.tolist())
+
     def _calculate_risk_weighted_calibration(self):
         weights_per_category = self.study_data['frequency'].groupby(
             self.study_data['linear_predictors_category']).sum()
@@ -792,3 +840,8 @@ class ModelValidation:
             'chi_square', float(chi2_log_rr), p_value_rr, df_rr,
             var_cov_log_rr_per_category
         )
+
+        eo_ratio, eo_lower_ci, eo_upper_ci = calculate_expected_by_observed_ratio_per_category(
+            observed_probs_per_category, predicted_probs_per_category, variance_ar_per_category)
+        self.results.append_expected_by_observed_ratio_to_category_specific_calibration(
+            eo_ratio.tolist(), eo_lower_ci.tolist(), eo_upper_ci.tolist())
