@@ -20,6 +20,7 @@ class ModelValidationResults:
     reference: Optional[dict] = None
     incidence_rates: pd.DataFrame
     auc: dict
+    brier_score: dict
     expected_by_observed_ratio: dict
     category_specific_calibration: pd.DataFrame
     calibration: dict
@@ -60,6 +61,14 @@ class ModelValidationResults:
     def set_auc(self, auc: float, variance: float, lower_ci: float, upper_ci: float) -> None:
         self.auc = {
             'auc': auc,
+            'variance': variance,
+            'lower_ci': lower_ci,
+            'upper_ci': upper_ci
+        }
+
+    def set_brier_score(self, brier_score: float, variance: float, lower_ci: float, upper_ci: float) -> None:
+        self.brier_score = {
+            'brier_score': brier_score,
             'variance': variance,
             'lower_ci': lower_ci,
             'upper_ci': upper_ci
@@ -361,6 +370,7 @@ class ModelValidation:
         self._calculate_study_incidence_rates(icare_model_parameters)
         self._calculate_auc()
         self._calculate_expected_by_observed_ratio()
+        self._calculate_brier_score()
         self._categorize_risk_scores(linear_predictor_cutoffs, number_of_percentiles)
         self._calculate_calibration()
 
@@ -641,6 +651,39 @@ class ModelValidation:
             wald_confidence_interval(np.log(expected_by_observed), np.sqrt(log_expected_by_observed_variance)))
 
         self.results.set_expected_by_observed_ratio(expected_by_observed, lower_ci, upper_ci)
+
+    def _calculate_brier_score(self) -> None:
+        predicted = self.study_data['risk_estimates'].values
+        observed = self.study_data['observed_outcome'].values
+        # per-subject Brier contribution: (predicted risk - observed outcome) ** 2
+        brier_contributions = (predicted - observed) ** 2
+
+        if self.nested_case_control_study:
+            sampling_weights = self.study_data['sampling_weights'].values
+            frequency = self.study_data['frequency'].values  # frequency = 1 / sampling_weights
+            total_weight = np.sum(frequency)
+            brier_score = np.sum(frequency * brier_contributions) / total_weight
+
+            # Variance of the inverse-probability-weighted Brier score, decomposed (as in the
+            # weighted observed-risk variance in _calculate_expected_by_observed_ratio) into a
+            # superpopulation term plus a sampling-design correction. The superpopulation term is
+            # the weighted sample variance of the Brier contributions; this generalizes the
+            # Bernoulli observed*(1 - observed) term used for the observed rate, because the
+            # contributions are not 0/1. The two coincide when weights are uniform, so this
+            # reduces exactly to the cohort variance np.var(brier_contributions) / n.
+            centered = brier_contributions - brier_score
+            superpopulation_variance = np.sum(frequency * centered ** 2) / total_weight
+            design_correction = np.sum(
+                centered ** 2 * (1 - sampling_weights) / sampling_weights ** 2) / total_weight
+            brier_variance = (superpopulation_variance + design_correction) / total_weight
+        else:
+            brier_score = np.mean(brier_contributions)
+            brier_variance = np.var(brier_contributions) / len(brier_contributions)
+
+        # calculate the 95% confidence intervals
+        lower_ci, upper_ci = wald_confidence_interval(brier_score, np.sqrt(brier_variance))
+
+        self.results.set_brier_score(brier_score, brier_variance, lower_ci, upper_ci)
 
     def _categorize_risk_scores(self, cutoffs: Optional[List[float]], number_of_percentiles: int) -> None:
         if cutoffs is not None:

@@ -107,6 +107,7 @@ def package_validation_results_to_dict(model_validation: ModelValidation, method
         results['reference'] = model_validation.results.reference
     results['incidence_rates'] = model_validation.results.incidence_rates.to_json(orient='records')
     results['auc'] = model_validation.results.auc
+    results['brier_score'] = model_validation.results.brier_score
     results['expected_by_observed_ratio'] = model_validation.results.expected_by_observed_ratio
     results['calibration'] = model_validation.results.calibration
     category_specific_calibration = model_validation.results.category_specific_calibration.copy(deep=True)

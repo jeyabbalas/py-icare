@@ -96,5 +96,7 @@ def test_validate_absolute_risk_model_runs(tmp_path):
         number_of_percentiles=5,
         seed=50,
     )
-    assert set(result) >= {"auc", "expected_by_observed_ratio", "calibration"}
+    assert set(result) >= {"auc", "brier_score", "expected_by_observed_ratio", "calibration"}
     assert 0.0 <= result["auc"]["auc"] <= 1.0
+    assert set(result["brier_score"]) == {"brier_score", "variance", "lower_ci", "upper_ci"}
+    assert 0.0 <= result["brier_score"]["brier_score"] <= 1.0

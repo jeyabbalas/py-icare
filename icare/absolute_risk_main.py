@@ -559,11 +559,16 @@ def validate_absolute_risk_model(
                 A dictionary containing the area under the receiver operating characteristic curve (AUC), the variance,
                 and the 95% confidence interval for the AUC. The dictionary has the following keys: 'auc', 'variance',
                 'lower_ci', and 'upper_ci'.
-            6) 'expected_by_observed_ratio':
+            6) 'brier_score':
+                A dictionary containing the overall Brier score (the mean squared difference between the predicted
+                risk and the observed outcome; inverse-probability weighted using the sampling weights for nested
+                case-control studies), the variance, and the 95% confidence interval for the Brier score. The
+                dictionary has the following keys: 'brier_score', 'variance', 'lower_ci', and 'upper_ci'.
+            7) 'expected_by_observed_ratio':
                 A dictionary containing the ratio of the expected and the observed number of cases in the study
                 population, and the 95% confidence interval for the ratio. The dictionary has the following keys:
                 'ratio', 'lower_ci', and 'upper_ci'.
-            7) 'calibration':
+            8) 'calibration':
                 A dictionary containing the calibration results. The dictionary has the following keys: 'absolute_risk',
                 and 'relative_risk' containing the calibration results for absolute risk and relative risk,
                 respectively. Each of these keys is a dictionary with the following information (associated key name):
@@ -571,7 +576,7 @@ def validate_absolute_risk_model(
                 test-statistic ('statistic'; with a sub-key containing 'chi_square' for the chi-squared metric),
                 and parameters of the statistical test ('parameter'; with a sub-key 'degrees_of_freedom' for the
                 degrees of freedom of the chi-squared distribution).
-            8) 'category_specific_calibration':
+            9) 'category_specific_calibration':
                 A records-oriented JSON containing the category-specific calibration results. The columns of the data
                 frame are: 'category', 'observed_absolute_risk', 'predicted_absolute_risk', 'lower_ci_absolute_risk',
                 'upper_ci_absolute_risk', 'observed_relative_risk', 'predicted_relative_risk', 'lower_ci_relative_risk',
@@ -585,7 +590,7 @@ def validate_absolute_risk_model(
                     import pandas as pd
                     results = validate_absolute_risk_model(...)
                     category_specific_calibration = pd.read_json(io.StringIO(results['category_specific_calibration']))
-            9) 'method':
+            10) 'method':
                 A string containing the name of the iCARE method being used. When this method is used, the method name
                 is "iCARE - absolute risk model validation".
     """
