@@ -1,0 +1,97 @@
+name: Release to PyPI
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+# Least privilege by default; the publish job widens only what it needs.
+permissions:
+  contents: read
+
+jobs:
+  check-version:
+    name: Check tag matches version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify release tag equals package version
+        if: github.event_name == 'release'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          PKG_VERSION="$(grep -oP '^__version__\s*=\s*"\K[^"]+' icare/__init__.py)"
+          echo "Release tag: ${RELEASE_TAG} | package version: v${PKG_VERSION}"
+          if [ "${RELEASE_TAG#v}" != "${PKG_VERSION}" ]; then
+            echo "::error::Release tag '${RELEASE_TAG}' must equal 'v${PKG_VERSION}' (from icare/__init__.py). Fix the tag or bump the version."
+            exit 1
+          fi
+
+  test:
+    name: Test (py${{ matrix.python-version }})
+    needs: check-version
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install package and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]                 # provides pytest
+      - name: Run fast tests
+        run: pytest -m "not slow"
+      - name: Run slow cross-validation tests (3.13 only)
+        if: matrix.python-version == '3.13'
+        run: pytest -m slow
+
+  build:
+    name: Build distribution
+    needs: check-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Build sdist and wheel into a clean directory
+        run: |
+          python -m pip install --upgrade pip
+          pip install "build>=1.2.2" "twine>=6.1.0"   # twine >=6.1 accepts Metadata 2.4
+          python -m build --outdir release-dist        # isolated from the tracked dist/icare.zip
+      - name: Check metadata and sdist contents
+        run: |
+          twine check release-dist/*
+          echo "== sdist contents (must exclude data/, tests/, dist/icare.zip) =="
+          tar --list --file release-dist/pyicare-*.tar.gz
+      - name: Upload distribution artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyicare-dist
+          path: release-dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi                              # must match the PyPI trusted-publisher config
+      url: https://pypi.org/project/pyicare/
+    permissions:
+      id-token: write                         # OIDC; required, scoped to this job only
+    steps:
+      - name: Download distribution artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pyicare-dist
+          path: dist                          # clean workspace (no checkout) -> only our artifacts
+      - name: Publish to PyPI (Trusted Publishing / OIDC)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true                 # idempotent: a re-run won't error on an existing file

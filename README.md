@@ -20,7 +20,7 @@ If you want to access iCARE from a Python runtime environment, you can install i
 pip install pyicare
 ```
 
-iCARE is supported on Python 3.11 and above.
+iCARE is supported on Python 3.12 and above.
 
 ## Usage
 
