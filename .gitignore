@@ -1,3 +1,6 @@
 .idea
 pyicare.egg-info
 dist
+*.DS_Store
+icare/__pycache__
+tests/__pycache__
