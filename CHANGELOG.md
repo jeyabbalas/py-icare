@@ -5,6 +5,30 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-07-01
+
+Backward-compatible in-memory I/O so the library can be driven without touching disk (for example from
+the `wasm-icare` JavaScript SDK under Pyodide). Default behavior is unchanged; all existing tests pass.
+
+### Added
+
+- In-memory inputs for every `*_path` argument of `compute_absolute_risk`,
+  `compute_absolute_risk_split_interval`, and `validate_absolute_risk_model` (including the `*_path`
+  values nested inside `icare_model_parameters`): pass a pandas DataFrame for tabular data, a dict for the
+  log-odds-ratio arguments, or an inline Patsy formula string for the covariate-formula arguments, in
+  place of a file path.
+- An `output_format` argument (default `'json'`, or `'dataframe'`) on all three public functions. In
+  `'dataframe'` mode, `profile` / `study_data` / `incidence_rates` / `category_specific_calibration` are
+  returned as pandas DataFrames and each `reference_risks` interval's `population_risks` as a NumPy array,
+  instead of the records-oriented JSON strings.
+
+### Changed
+
+- The split-interval combiner is now DataFrame-native: it no longer serializes each sub-interval to JSON
+  and re-parses it before combining. Results are unchanged to within test tolerance (the removed round
+  trip only dropped an intermediate 10-digit rounding); the default JSON output normalizes whole-number
+  covariate tokens (e.g. `0` to `0.0`), consistent with the single-interval output.
+
 ## [1.1.0] - 2026-07-01
 
 The first release since 1.0.0: a full modernization of the dependency stack, new
@@ -58,5 +82,6 @@ profile = pd.read_json(io.StringIO(result["profile"]), orient="records")
 
 - Initial public release of Py-iCARE on PyPI.
 
+[1.2.0]: https://pypi.org/project/pyicare/1.2.0/
 [1.1.0]: https://pypi.org/project/pyicare/1.1.0/
 [1.0.0]: https://pypi.org/project/pyicare/1.0.0/

@@ -1,4 +1,5 @@
 import json
+import os
 import pathlib
 from typing import Union, List, Tuple
 
@@ -8,17 +9,30 @@ from icare import check_errors
 
 
 def read_file_to_string(file: Union[str, pathlib.Path]) -> str:
-    with open(file, mode='r') as f:
-        return ' '.join(f.read().splitlines())
+    """Read a Patsy formula from a file, or accept one inline.
+
+    A ``pathlib.Path`` (or a ``str`` naming an existing file) is read from disk; any other ``str`` is
+    treated as an inline formula. In both cases line breaks are collapsed to single spaces.
+    """
+    if isinstance(file, pathlib.Path):
+        with open(file, mode='r') as f:
+            return ' '.join(f.read().splitlines())
+    if isinstance(file, str) and os.path.exists(file):
+        with open(file, mode='r') as f:
+            return ' '.join(f.read().splitlines())
+    return ' '.join(str(file).splitlines())
 
 
-def read_file_to_dict(file: Union[str, pathlib.Path]) -> dict:
+def read_file_to_dict(file: Union[str, pathlib.Path, dict]) -> dict:
+    if isinstance(file, dict):
+        return file
     with open(file, mode='r') as f:
         return json.load(f)
 
 
-def read_file_to_dataframe(file: Union[str, pathlib.Path], allow_integers: bool = True) -> pd.DataFrame:
-    df = pd.read_csv(file)
+def read_file_to_dataframe(file: Union[str, pathlib.Path, pd.DataFrame],
+                           allow_integers: bool = True) -> pd.DataFrame:
+    df = file.copy() if isinstance(file, pd.DataFrame) else pd.read_csv(file)
 
     if 'id' in df.columns:
         df.set_index('id', inplace=True)
@@ -31,6 +45,24 @@ def read_file_to_dataframe(file: Union[str, pathlib.Path], allow_integers: bool 
 
 
 def read_file_to_dataframe_given_dtype(file, dtype) -> pd.DataFrame:
+    if isinstance(file, pd.DataFrame):
+        df = file.copy()
+        columns = df.columns
+        if 'id' in columns:
+            if isinstance(dtype, dict) and 'id' not in dtype:
+                dtype = {'id': str, **dtype}
+            else:
+                dtype = {'id': str, **{col: dtype for col in columns if col != 'id'}}
+        if isinstance(dtype, dict):
+            # astype() raises on keys absent from the frame; read_csv(dtype=...) silently tolerates them.
+            dtype = {col: col_dtype for col, col_dtype in dtype.items() if col in df.columns}
+        df = df.astype(dtype)
+        if 'id' in df.columns:
+            df.set_index('id', inplace=True)
+        elif df.index.name == 'id':
+            df.index = df.index.astype(str)
+        return df
+
     header = pd.read_csv(file, nrows=1).columns
     if 'id' in header:
         if isinstance(dtype, dict) and 'id' not in dtype:
@@ -44,6 +76,14 @@ def read_file_to_dataframe_given_dtype(file, dtype) -> pd.DataFrame:
         df.set_index('id', inplace=True)
 
     return df
+
+
+def read_file_to_dataframe_raw(file: Union[str, pathlib.Path, pd.DataFrame]) -> pd.DataFrame:
+    """Read tabular data without normalization (no id-indexing, no dtype coercion).
+
+    A DataFrame is copied so callers that pass one in memory are not mutated by downstream in-place edits.
+    """
+    return file.copy() if isinstance(file, pd.DataFrame) else pd.read_csv(file)
 
 
 def set_age_intervals(age_start: Union[int, List[int]], age_interval_length: Union[int, List[int]],
