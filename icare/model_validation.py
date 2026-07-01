@@ -374,10 +374,12 @@ class ModelValidation:
         self._categorize_risk_scores(linear_predictor_cutoffs, number_of_percentiles)
         self._calculate_calibration()
 
-    def _set_study_data(self, study_data_path: Union[str, pathlib.Path], predicted_risk_variable_name: Optional[str],
+    def _set_study_data(self, study_data_path: Union[str, pathlib.Path, pd.DataFrame],
+                        predicted_risk_variable_name: Optional[str],
                         linear_predictor_variable_name: Optional[str]) -> None:
-        # load study data and set data types
-        self.study_data = pd.read_csv(study_data_path)
+        # load study data and set data types (raw read: this method does its own coercion + id-indexing +
+        # in-place mutation, so read_file_to_dataframe_raw copies an in-memory DataFrame to protect the caller)
+        self.study_data = utils.read_file_to_dataframe_raw(study_data_path)
 
         mandatory_columns = ['observed_outcome', 'study_entry_age', 'study_exit_age', 'time_of_onset']
         check_errors.check_data_mandatory_columns(self.study_data, mandatory_columns)

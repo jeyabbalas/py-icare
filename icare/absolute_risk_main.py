@@ -1,6 +1,8 @@
 import pathlib
 from typing import Union, List, Optional
 
+import pandas as pd
+
 from icare import misc
 from icare.absolute_risk_model import AbsoluteRiskModel
 
@@ -8,22 +10,29 @@ from icare.absolute_risk_model import AbsoluteRiskModel
 def compute_absolute_risk(
         apply_age_start: Union[int, List[int]],
         apply_age_interval_length: Union[int, List[int]],
-        model_disease_incidence_rates_path: Union[str, pathlib.Path],
-        model_competing_incidence_rates_path: Union[str, pathlib.Path, None] = None,
+        model_disease_incidence_rates_path: Union[str, pathlib.Path, pd.DataFrame],
+        model_competing_incidence_rates_path: Union[str, pathlib.Path, pd.DataFrame, None] = None,
         model_covariate_formula_path: Union[str, pathlib.Path, None] = None,
-        model_log_relative_risk_path: Union[str, pathlib.Path, None] = None,
-        model_reference_dataset_path: Union[str, pathlib.Path, None] = None,
+        model_log_relative_risk_path: Union[str, pathlib.Path, dict, None] = None,
+        model_reference_dataset_path: Union[str, pathlib.Path, pd.DataFrame, None] = None,
         model_reference_dataset_weights_variable_name: Optional[str] = None,
-        model_snp_info_path: Union[str, pathlib.Path, None] = None,
+        model_snp_info_path: Union[str, pathlib.Path, pd.DataFrame, None] = None,
         model_family_history_variable_name: Optional[str] = None,
         num_imputations: int = 5,
-        apply_covariate_profile_path: Union[str, pathlib.Path, None] = None,
-        apply_snp_profile_path: Union[str, pathlib.Path, None] = None,
+        apply_covariate_profile_path: Union[str, pathlib.Path, pd.DataFrame, None] = None,
+        apply_snp_profile_path: Union[str, pathlib.Path, pd.DataFrame, None] = None,
         return_linear_predictors: bool = False,
         return_reference_risks: bool = False,
-        seed: Optional[int] = None) -> dict:
+        seed: Optional[int] = None,
+        output_format: str = 'json') -> dict:
     """
     This function is used to build absolute risk models and apply them to estimate absolute risks.
+
+    In addition to file paths, every '*_path' argument accepts an in-memory object: a pandas DataFrame for
+    the tabular inputs (incidence rates, reference dataset, SNP info, covariate/SNP profiles), a dict for
+    'model_log_relative_risk_path', and an inline Patsy formula string for 'model_covariate_formula_path'.
+    Set 'output_format' to 'dataframe' to receive 'profile' as a pandas DataFrame and 'reference_risks' as
+    numpy arrays instead of the default records-oriented JSON string.
 
     :param apply_age_start:
         Age(s) for the start of the interval, over which, to compute the absolute risk. If a single
@@ -135,36 +144,43 @@ def compute_absolute_risk(
     absolute_risk_model.compute_absolute_risks()
 
     return misc.package_absolute_risk_results_to_dict(absolute_risk_model, return_linear_predictors,
-                                                      return_reference_risks, 'iCARE - absolute risk')
+                                                      return_reference_risks, 'iCARE - absolute risk',
+                                                      output_format=output_format)
 
 
 def compute_absolute_risk_split_interval(
         apply_age_start: Union[int, List[int]],
         apply_age_interval_length: Union[int, List[int]],
-        model_disease_incidence_rates_path: Union[str, pathlib.Path],
-        model_competing_incidence_rates_path: Union[str, pathlib.Path, None] = None,
+        model_disease_incidence_rates_path: Union[str, pathlib.Path, pd.DataFrame],
+        model_competing_incidence_rates_path: Union[str, pathlib.Path, pd.DataFrame, None] = None,
         model_covariate_formula_before_cutpoint_path: Union[str, pathlib.Path, None] = None,
         model_covariate_formula_after_cutpoint_path: Union[str, pathlib.Path, None] = None,
-        model_log_relative_risk_before_cutpoint_path: Union[str, pathlib.Path, None] = None,
-        model_log_relative_risk_after_cutpoint_path: Union[str, pathlib.Path, None] = None,
-        model_reference_dataset_before_cutpoint_path: Union[str, pathlib.Path, None] = None,
-        model_reference_dataset_after_cutpoint_path: Union[str, pathlib.Path, None] = None,
+        model_log_relative_risk_before_cutpoint_path: Union[str, pathlib.Path, dict, None] = None,
+        model_log_relative_risk_after_cutpoint_path: Union[str, pathlib.Path, dict, None] = None,
+        model_reference_dataset_before_cutpoint_path: Union[str, pathlib.Path, pd.DataFrame, None] = None,
+        model_reference_dataset_after_cutpoint_path: Union[str, pathlib.Path, pd.DataFrame, None] = None,
         model_reference_dataset_weights_variable_name_before_cutpoint: Optional[str] = None,
         model_reference_dataset_weights_variable_name_after_cutpoint: Optional[str] = None,
-        model_snp_info_path: Union[str, pathlib.Path, None] = None,
+        model_snp_info_path: Union[str, pathlib.Path, pd.DataFrame, None] = None,
         model_family_history_variable_name_before_cutpoint: Optional[str] = None,
         model_family_history_variable_name_after_cutpoint: Optional[str] = None,
-        apply_covariate_profile_before_cutpoint_path: Union[str, pathlib.Path, None] = None,
-        apply_covariate_profile_after_cutpoint_path: Union[str, pathlib.Path, None] = None,
-        apply_snp_profile_path: Union[str, pathlib.Path, None] = None,
+        apply_covariate_profile_before_cutpoint_path: Union[str, pathlib.Path, pd.DataFrame, None] = None,
+        apply_covariate_profile_after_cutpoint_path: Union[str, pathlib.Path, pd.DataFrame, None] = None,
+        apply_snp_profile_path: Union[str, pathlib.Path, pd.DataFrame, None] = None,
         cutpoint: Union[int, List[int], None] = None,
         num_imputations: int = 5,
         return_linear_predictors: bool = False,
         return_reference_risks: bool = False,
-        seed: Optional[int] = None) -> dict:
+        seed: Optional[int] = None,
+        output_format: str = 'json') -> dict:
     """
     This function is used to build an absolute risk model that incorporates different input parameters before and after
         a given time cut-point. The model is then applied to estimate the combined absolute risks.
+
+    In addition to file paths, every '*_path' argument accepts an in-memory object: a pandas DataFrame for
+    the tabular inputs, a dict for the 'model_log_relative_risk_*' arguments, and an inline Patsy formula
+    string for the 'model_covariate_formula_*' arguments. Set 'output_format' to 'dataframe' to receive
+    'profile' as a pandas DataFrame and 'reference_risks' as numpy arrays instead of the default JSON string.
 
     :param apply_age_start:
         Age(s) for the start of the interval, over which, to compute the absolute risk. If a single integer is provided,
@@ -377,7 +393,8 @@ def compute_absolute_risk_split_interval(
             num_imputations=num_imputations,
             return_linear_predictors=return_linear_predictors,
             return_reference_risks=return_reference_risks,
-            seed=seed
+            seed=seed,
+            output_format='dataframe'
         )
 
         results_after_cutpoint = compute_absolute_risk(
@@ -396,13 +413,15 @@ def compute_absolute_risk_split_interval(
             num_imputations=num_imputations,
             return_linear_predictors=return_linear_predictors,
             return_reference_risks=return_reference_risks,
-            seed=seed
+            seed=seed,
+            output_format='dataframe'
         )
 
         results = misc.combine_split_absolute_risk_results(
             results_before_cutpoint, results_after_cutpoint,
             return_linear_predictors, return_reference_risks,
-            'iCARE - absolute risk with split intervals'
+            'iCARE - absolute risk with split intervals',
+            output_format=output_format
         )
     else:
         results = compute_absolute_risk(
@@ -421,14 +440,15 @@ def compute_absolute_risk_split_interval(
             num_imputations=num_imputations,
             return_linear_predictors=return_linear_predictors,
             return_reference_risks=return_reference_risks,
-            seed=seed
+            seed=seed,
+            output_format=output_format
         )
 
     return results
 
 
 def validate_absolute_risk_model(
-        study_data_path: Union[str, pathlib.Path],
+        study_data_path: Union[str, pathlib.Path, pd.DataFrame],
         predicted_risk_interval: Union[str, int, List[int]],
         icare_model_parameters: Optional[dict] = None,
         predicted_risk_variable_name: Optional[str] = None,
@@ -441,9 +461,15 @@ def validate_absolute_risk_model(
         linear_predictor_cutoffs: Optional[List[float]] = None,
         dataset_name: str = 'Example dataset',
         model_name: str = 'Example risk prediction model',
-        seed: Optional[int] = None) -> dict:
+        seed: Optional[int] = None,
+        output_format: str = 'json') -> dict:
     """
     This function is used to validate absolute risk models.
+
+    In addition to file paths, 'study_data_path' accepts a pandas DataFrame, and the '*_path' values inside
+    'icare_model_parameters' accept in-memory objects (DataFrame / dict / inline formula string). Set
+    'output_format' to 'dataframe' to receive 'study_data', 'incidence_rates', and
+    'category_specific_calibration' as pandas DataFrames instead of the default records-oriented JSON strings.
 
     :param study_data_path:
         A path to a CSV file containing the study data. The data must contain the following columns:
@@ -602,4 +628,5 @@ def validate_absolute_risk_model(
                                        reference_entry_age, reference_exit_age, reference_predicted_risks,
                                        reference_linear_predictors, seed)
 
-    return misc.package_validation_results_to_dict(model_validation, 'iCARE - absolute risk model validation')
+    return misc.package_validation_results_to_dict(model_validation, 'iCARE - absolute risk model validation',
+                                                   output_format=output_format)
