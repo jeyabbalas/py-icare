@@ -1,0 +1,11 @@
+# Keep the source distribution to the installable package + metadata only.
+# The wheel already ships just the `icare` package; these rules stop setuptools'
+# default sdist file-finder from sweeping in test/data/demo assets (notably the
+# 14 MB data/ directory and the git-tracked dist/icare.zip used by wasm-icare).
+prune tests
+prune data
+prune demo
+prune images
+prune dist
+global-exclude .DS_Store
+global-exclude *.py[cod]

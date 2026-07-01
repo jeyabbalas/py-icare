@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyicare"
-version = "1.0.0"
+dynamic = ["version"]
 description = "A Python distribution of iCARE, a tool for individualized Coherent Absolute Risk Estimation."
 readme = "README.md"
 authors = [{ name = "Jeya Balaji Balasubramanian", email = "jeyabbalas@gmail.com" }]
@@ -46,6 +46,9 @@ validate_absolute_risk_model = "icare.absolute_risk_main:validate_absolute_risk_
 
 [tool.setuptools]
 packages = ["icare"]
+
+[tool.setuptools.dynamic]
+version = { attr = "icare.__version__" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
