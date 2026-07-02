@@ -366,6 +366,43 @@ class AbsoluteRiskModel:
         self._set_baseline_hazards(age_specific_disease_incidence_rates_path)
         self._set_competing_incidence_rates(age_specific_competing_incidence_rates_path)
 
+    @classmethod
+    def build(cls, model_disease_incidence_rates_path: Union[str, pathlib.Path],
+              model_competing_incidence_rates_path: Union[str, pathlib.Path, None],
+              formula_path: Union[str, pathlib.Path, None],
+              log_relative_risk_path: Union[str, pathlib.Path, None],
+              reference_dataset_path: Union[str, pathlib.Path, None],
+              model_reference_dataset_weights_variable_name: Optional[str],
+              num_imputations: int, seed: Optional[int] = None) -> "AbsoluteRiskModel":
+        """Fit a reusable, profile-independent absolute-risk model (population distribution, betas, and the
+        baseline & competing hazards) once — reading the reference dataset a single time — then apply it to
+        many profile batches via ``apply_to_profile``. This is the fit-once / apply-many half of the
+        fit/apply split.
+
+        Covariate models only: the SNP option imputes per batch and mutates the covariate model, so it is
+        not supported on this path — use ``compute_absolute_risk`` for SNP models. ``__init__`` (the
+        one-shot path) is unchanged; this alternate constructor reuses the same profile-independent
+        ``_set_*`` setters, deferring only the age-coverage rate checks to apply time.
+        """
+        self = cls.__new__(cls)
+        # SNP is out of scope for the fit/apply path; force the covariate-model imputation count of 1
+        # (compute's __init__ only raises num_imputations above 1 when a SNP model is present).
+        self.num_imputations = 1
+        self.return_population_risks = False
+        self._seed = seed
+
+        covariate_model = CovariateModel.fit(formula_path, log_relative_risk_path, reference_dataset_path,
+                                             model_reference_dataset_weights_variable_name)
+        self._covariate_model = covariate_model
+        self._snp_model = None
+
+        self._set_population_distribution(covariate_model, None)
+        self._set_population_weights(covariate_model, None)
+        self._set_beta_estimates(covariate_model, None)
+        self._fit_baseline_hazards(model_disease_incidence_rates_path)
+        self._fit_competing_incidence_rates(model_competing_incidence_rates_path)
+        return self
+
     def _set_population_distribution(self, covariate_model: Optional[CovariateModel],
                                      snp_model: Optional[SnpModel]) -> None:
         if covariate_model is not None and snp_model is not None:
@@ -442,6 +479,45 @@ class AbsoluteRiskModel:
                                                     'model_competing_incidence_rates_path')
             self.competing_incidence_rates = competing_incidence_rates
 
+    def _fit_baseline_hazards(self, marginal_disease_incidence_rates_path: Union[str, pathlib.Path]) -> None:
+        """Format the marginal disease incidence rates and fit the (age-independent) baseline hazards for
+        the fit/apply path. Mirrors ``_set_baseline_hazards`` minus the ``check_rate_covers_all_ages`` call,
+        which needs the apply ages (unknown at build time) and is deferred to ``_check_rate_coverage``.
+        """
+        marginal_disease_incidence_rates = utils.read_file_to_dataframe(marginal_disease_incidence_rates_path)
+        check_errors.check_rate_format(marginal_disease_incidence_rates, 'model_disease_incidence_rates_path')
+        marginal_disease_incidence_rates = format_rates(marginal_disease_incidence_rates)
+        self._marginal_disease_incidence_rates = marginal_disease_incidence_rates
+        self.baseline_hazards = estimate_baseline_hazards(marginal_disease_incidence_rates, self.beta_estimates,
+                                                          self.population_distribution, self.population_weights)
+
+    def _fit_competing_incidence_rates(self, competing_incidence_rates_path: Union[str, pathlib.Path, None]) -> None:
+        """Format the competing incidence rates (or a zero series if none) for the fit/apply path. Mirrors
+        ``_set_competing_incidence_rates`` minus the deferred ``check_rate_covers_all_ages`` call.
+        """
+        if competing_incidence_rates_path is None:
+            self.competing_incidence_rates = pd.Series(data=np.zeros(len(self.baseline_hazards)),
+                                                       index=self.baseline_hazards.index, name='rate', dtype=float)
+            self.competing_incidence_rates.index.name = 'age'
+            self._competing_incidence_rates_provided = False
+        else:
+            competing_incidence_rates = utils.read_file_to_dataframe(competing_incidence_rates_path)
+            check_errors.check_rate_format(competing_incidence_rates, 'model_competing_incidence_rates_path')
+            competing_incidence_rates = format_rates(competing_incidence_rates)
+            self.competing_incidence_rates = competing_incidence_rates
+            self._competing_incidence_rates_provided = True
+
+    def _check_rate_coverage(self) -> None:
+        """Run the age-coverage rate checks deferred by the fit/apply ``build`` path, now that the apply
+        ages are set. For competing rates, only checks when they were explicitly provided — matching
+        ``_set_competing_incidence_rates``, which does not check the zero-filled default.
+        """
+        check_errors.check_rate_covers_all_ages(self._marginal_disease_incidence_rates, self.age_start,
+                                                self.age_interval_length, 'model_disease_incidence_rates_path')
+        if self._competing_incidence_rates_provided:
+            check_errors.check_rate_covers_all_ages(self.competing_incidence_rates, self.age_start,
+                                                    self.age_interval_length, 'model_competing_incidence_rates_path')
+
     def compute_absolute_risks(self) -> AbsoluteRiskResults:
         self.results = AbsoluteRiskResults()
         self.results.set_ages(self.age_start, self.age_interval_length)
@@ -493,3 +569,30 @@ class AbsoluteRiskModel:
         else:
             raise ValueError("ERROR: No query profiles were set. Please pass inputs for arguments "
                              "'apply_covariate_profile_path' and/or 'apply_snp_profile_path'.")
+
+    def apply_to_profile(self, apply_age_start: Union[int, List[int]],
+                         apply_age_interval_length: Union[int, List[int]],
+                         apply_covariate_profile_path: Union[str, pathlib.Path, pd.DataFrame],
+                         return_linear_predictors: bool = False, return_reference_risks: bool = False,
+                         output_format: str = 'json') -> dict:
+        """Apply this fitted model (constructed via ``build``) to a batch of covariate profiles and return
+        the packaged absolute-risk results, reusing the profile-independent fit — the reference dataset is
+        NOT re-read. Call repeatedly to stream many batches through one model.
+
+        ``apply_covariate_profile_path`` accepts a path or an in-memory DataFrame; the packaging and result
+        shape are identical to ``compute_absolute_risk``.
+        """
+        from icare import misc  # deferred: misc imports AbsoluteRiskModel, so a top-level import is circular
+
+        profile, z_profile = self._covariate_model.transform_profile(apply_covariate_profile_path)
+        self.profile = profile
+        self.z_profile = z_profile
+        self.age_start, self.age_interval_length = utils.set_age_intervals(
+            apply_age_start, apply_age_interval_length, len(self.z_profile), 'apply_covariate_profile_path')
+        self._check_rate_coverage()
+        self.return_population_risks = return_reference_risks
+        self.compute_absolute_risks()
+
+        return misc.package_absolute_risk_results_to_dict(
+            self, return_linear_predictors, return_reference_risks, 'iCARE - absolute risk',
+            output_format=output_format)

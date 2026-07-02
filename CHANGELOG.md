@@ -5,6 +5,25 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-07-01
+
+A fit-once / apply-many entry point so a single reusable model can score many covariate profile batches
+without re-reading the reference dataset (the efficiency lever for large or streamed datasets, e.g. from
+the `wasm-icare` JavaScript SDK). Purely additive; default behavior is unchanged and all existing tests
+pass.
+
+### Added
+
+- `build_absolute_risk_model(...)`: builds a reusable `AbsoluteRiskModel` once — reading the reference
+  dataset a single time and fitting the population distribution, betas, and baseline & competing hazards —
+  and returns it. Accepts the same model arguments (and the same in-memory objects) as
+  `compute_absolute_risk`.
+- `AbsoluteRiskModel.apply_to_profile(apply_age_start, apply_age_interval_length,
+  apply_covariate_profile_path, ...)`: applies a built model to a batch of covariate profiles, reusing the
+  fitted state (the reference is not re-read), and returns results packaged identically to
+  `compute_absolute_risk`. Supports the general-purpose covariate model; the SNP option remains available
+  through `compute_absolute_risk`.
+
 ## [1.2.0] - 2026-07-01
 
 Backward-compatible in-memory I/O so the library can be driven without touching disk (for example from
