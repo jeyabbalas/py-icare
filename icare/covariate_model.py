@@ -1,5 +1,5 @@
 import pathlib
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -16,6 +16,8 @@ class CovariateModel:
     z_profile: pd.DataFrame  # z_profile is the design matrix generated from profile
     population_distribution: pd.DataFrame
     population_weights: np.ndarray
+    formula: str  # retained by fit() so transform_profile() can rebuild z_profiles for new batches
+    reference_dataset: pd.DataFrame  # retained by fit() (post weights-pop) for imputation modes/dtypes
 
     def __init__(self,
                  formula_path: Union[str, pathlib.Path, None],
@@ -74,3 +76,48 @@ class CovariateModel:
         check_errors.check_covariate_profile(reference_dataset, profile)
         self.z_profile = design_matrix.build_design_matrix_with_missing_values(formula, profile, reference_dataset)
         check_errors.check_covariate_profile_against_reference_population(self.z_profile, self.population_distribution)
+
+    @classmethod
+    def fit(cls, formula_path: Union[str, pathlib.Path, None],
+            log_relative_risk_path: Union[str, pathlib.Path, None],
+            reference_dataset_path: Union[str, pathlib.Path, None],
+            reference_dataset_weights_variable_name: Optional[str]) -> "CovariateModel":
+        """Fit the profile-independent covariate model (population distribution, weights, betas) without a
+        query profile, retaining the formula and reference dataset so the fitted model can be applied to
+        many profile batches later via ``transform_profile``.
+
+        This is the reference-read-once half of the fit/apply split: it mirrors the reference-derived work
+        of ``__init__`` (lines 37-43) but omits the profile handling. ``__init__`` is unchanged.
+        """
+        parameters = [formula_path, log_relative_risk_path, reference_dataset_path]
+        if any(x is None for x in parameters):
+            raise ValueError("ERROR: To build a reusable covariate model, all of 'model_covariate_formula_path', "
+                             "'model_log_relative_risk_path', and 'model_reference_dataset_path' must be specified.")
+
+        self = cls.__new__(cls)
+        formula = utils.read_file_to_string(formula_path)
+        log_relative_risk = utils.read_file_to_dict(log_relative_risk_path)
+        reference_dataset = utils.read_file_to_dataframe(reference_dataset_path, allow_integers=False)
+
+        self._set_population_distribution(formula, reference_dataset)
+        self._set_population_weights(reference_dataset_weights_variable_name, reference_dataset)
+        self._set_beta_estimates(log_relative_risk)
+
+        # Retain (after the weights column is popped by _set_population_weights, matching the dtype source
+        # __init__ uses for the initial profile read) so transform_profile builds identical design matrices.
+        self.formula = formula
+        self.reference_dataset = reference_dataset
+        return self
+
+    def transform_profile(self, profile: Union[str, pathlib.Path, pd.DataFrame]) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Build the ``(profile, z_profile)`` design matrix for a new batch against the fitted reference
+        dataset, without re-reading the reference. Mirrors ``__init__`` lines 45-47 (via ``_set_profile`` /
+        ``_set_z_profile``) so a model built with ``fit`` applies to many batches identically to a one-shot
+        ``AbsoluteRiskModel``.
+        """
+        profile = utils.read_file_to_dataframe_given_dtype(profile, dtype=self.reference_dataset.dtypes.to_dict())
+        check_errors.check_covariate_profile(self.reference_dataset, profile)
+        z_profile = design_matrix.build_design_matrix_with_missing_values(self.formula, profile,
+                                                                          self.reference_dataset)
+        check_errors.check_covariate_profile_against_reference_population(z_profile, self.population_distribution)
+        return profile, z_profile

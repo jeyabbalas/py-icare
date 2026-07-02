@@ -148,6 +148,60 @@ def compute_absolute_risk(
                                                       output_format=output_format)
 
 
+def build_absolute_risk_model(
+        model_disease_incidence_rates_path: Union[str, pathlib.Path, pd.DataFrame],
+        model_competing_incidence_rates_path: Union[str, pathlib.Path, pd.DataFrame, None] = None,
+        model_covariate_formula_path: Union[str, pathlib.Path, None] = None,
+        model_log_relative_risk_path: Union[str, pathlib.Path, dict, None] = None,
+        model_reference_dataset_path: Union[str, pathlib.Path, pd.DataFrame, None] = None,
+        model_reference_dataset_weights_variable_name: Optional[str] = None,
+        num_imputations: int = 5,
+        seed: Optional[int] = None) -> AbsoluteRiskModel:
+    """Build a reusable absolute risk model once, then apply it to many covariate profile batches.
+
+    This is the fit-once / apply-many companion to 'compute_absolute_risk'. It performs the expensive,
+    profile-independent work — reading the reference dataset (a single time), building the population
+    distribution, estimating the betas, and fitting the baseline and competing hazards — and returns an
+    'AbsoluteRiskModel'. Call its '.apply_to_profile(apply_age_start, apply_age_interval_length,
+    apply_covariate_profile_path, ...)' method repeatedly to score profile batches without re-reading the
+    reference; the results are packaged identically to 'compute_absolute_risk'. This is useful for scoring
+    large or streamed profile datasets efficiently.
+
+    As with 'compute_absolute_risk', every '*_path' argument also accepts an in-memory object: a pandas
+    DataFrame for the tabular inputs, a dict for 'model_log_relative_risk_path', and an inline Patsy formula
+    string for 'model_covariate_formula_path'.
+
+    This path supports the general-purpose covariate model only. The special SNP model option is not
+    supported here (it imputes SNPs per batch and mutates the covariate model); use 'compute_absolute_risk'
+    for SNP models.
+
+    :param model_disease_incidence_rates_path:
+        Age-specific disease incidence rates for the population of interest (see 'compute_absolute_risk').
+    :param model_competing_incidence_rates_path:
+        Age-specific competing-event incidence rates (see 'compute_absolute_risk').
+    :param model_covariate_formula_path:
+        Patsy symbolic description of the covariate model (see 'compute_absolute_risk').
+    :param model_log_relative_risk_path:
+        Log odds ratios of the covariates (see 'compute_absolute_risk').
+    :param model_reference_dataset_path:
+        Reference dataset with a representative risk-factor distribution (see 'compute_absolute_risk').
+    :param model_reference_dataset_weights_variable_name:
+        Name of the sampling-weight column in the reference dataset (see 'compute_absolute_risk').
+    :param num_imputations:
+        Retained for signature parity with 'compute_absolute_risk'; only relevant to the SNP option, which
+        is unsupported on this path, so it has no effect on a covariate model.
+    :param seed:
+        Fix a seed for reproducibility.
+    :return:
+        A fitted 'AbsoluteRiskModel'. Use its '.apply_to_profile(...)' method to compute absolute risks for
+        one or more covariate profile batches.
+    """
+    return AbsoluteRiskModel.build(
+        model_disease_incidence_rates_path, model_competing_incidence_rates_path,
+        model_covariate_formula_path, model_log_relative_risk_path, model_reference_dataset_path,
+        model_reference_dataset_weights_variable_name, num_imputations, seed)
+
+
 def compute_absolute_risk_split_interval(
         apply_age_start: Union[int, List[int]],
         apply_age_interval_length: Union[int, List[int]],
